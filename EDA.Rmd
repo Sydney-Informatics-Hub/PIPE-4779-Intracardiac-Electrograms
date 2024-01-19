@@ -1,0 +1,36 @@
+---
+title: "EDA"
+author: "Kristian Maras"
+date: "2024-01-18"
+output: html_document
+---
+
+## Exploration Data Analysis on S18 Sheep
+
+Load libraries
+```{r, results="hide", echo=FALSE}
+library(here)
+library(tidyverse)
+library(stringr)
+```
+
+
+How many regions are there with the Penta measurements.
+
+```{r}
+data <- tibble(files = list.files(path = here::here("data","S18","Export_Analysis-01_05_2024-17-02-34"),
+                                  pattern = "*.xml"))
+
+
+files_and_regions <- data %>% filter(str_detect(files,pattern = "Penta.*Export")) %>% 
+  mutate(region =  str_extract(files, "_P(\\d+)_") %>% gsub("_", "",.), 
+         number = as.numeric(gsub("P","",region))) %>% arrange(number)
+
+number_regions <- files_and_regions %>% distinct(region) %>% count()
+
+```
+
+Most regions only have 1 or 2 types of measurements, not all 3 ( RVp, LVp, SR).
+
+
+TODO More EDA ....
