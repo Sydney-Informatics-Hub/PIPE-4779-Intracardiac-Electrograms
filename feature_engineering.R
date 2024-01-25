@@ -3,6 +3,11 @@ library(tidyverse)
 library(readxl) # excel files
 library(xml2) #xml files
 library(plotly)
+
+# run retrieve_all_signals() to aggregate the data for animal S18
+# checks are done to make sure the extracted signal aligns with the data dictionary given
+
+
 labelled_data_path <- here::here("data","S18","labelled")
 
 main_data_path <- here::here("data","S18","Export_Analysis-01_05_2024-17-02-34")
@@ -88,12 +93,12 @@ get_signal_data <- function(WaveFront, Catheter_Type, Point_Number) {
     return() #return null
   }
 
+  channel <- str_match(read_lines(txt_file,n_max = 4), "Bipolar Mapping Channel=(\\w+-\\w+)")[3 , 2]
+  #find appropriate column to extract bipolar recordings given channel and window of interest
+
   if (is.null(channel)) {
     return() #return null
   }
-
-  channel <- str_match(read_lines(txt_file,n_max = 4), "Bipolar Mapping Channel=(\\w+-\\w+)")[3 , 2]
-  #find appropriate column to extract bipolar recordings given channel and window of interest
 
   signal <- tabular_content %>% select(matches(channel)) %>%
             slice(.,(woi$From + 5):(woi$To +5) ) * raw_ecg_gain
@@ -102,10 +107,23 @@ get_signal_data <- function(WaveFront, Catheter_Type, Point_Number) {
 }
 
 retrieve_all_signals <- function() {
-  LabelledSignalData <- LabelledData %>% rowwise  %>% mutate(signal = list(get_signal_data(WaveFront, Catheter_Type, Point_Number)))
-}
+  LabelledSignalData <- LabelledData %>% rowwise()  %>% mutate(signal = list(get_signal_data(WaveFront, Catheter_Type, Point_Number)))
+  saveRDS(LabelledSignalData,file = here::here(labelled_data_path,"LabelledSignalData.rds"))
+  }
 
 # this confirms the graph in the data dictionary
 data <- get_signal_data("SR","Penta",4815) %>% as_tibble()
-plot <- plot_ly(data, y = ~`20A_17-18(129)`, type = 'scatter', mode = 'lines')
-plot
+plotme <- plot_ly(data, y = ~`20A_17-18(129)`, type = 'scatter', mode = 'lines')
+plotme
+
+#Double check this is the same thing in the aggregate data.
+LabelledSignalData <- readRDS(file = here::here(labelled_data_path,"LabelledSignalData.rds"))
+
+LabelledSignalData %>%
+  filter(WaveFront == "SR",Catheter_Type == "Penta", Point_Number == 4815) %>%
+  select(signal) %>%
+  unlist() %>%
+  plot(type = "l")
+
+
+
