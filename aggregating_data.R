@@ -103,6 +103,8 @@ get_signal_data <- function(WaveFront, Catheter_Type, Point_Number) {
   signal <- tabular_content %>% select(matches(channel)) %>%
             slice(.,(woi$From + 5):(woi$To +5) ) * raw_ecg_gain
 
+  #standardising column name irrespective of channel name
+  signal <- signal %>% rename(.,"signal_data" = names(signal))
   return(signal)
 }
 
@@ -124,6 +126,8 @@ LabelledSignalData %>%
   select(signal) %>%
   unlist() %>%
   plot(type = "l")
+
+
 
 
 

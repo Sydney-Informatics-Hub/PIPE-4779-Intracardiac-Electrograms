@@ -7,15 +7,19 @@ output: html_document
 
 ## Exploration Data Analysis on S18 Sheep
 
-Load libraries
+Load libraries and aggregated data
 ```{r, results="hide", echo=FALSE}
 library(here)
 library(tidyverse)
 library(stringr)
+labelled_data_path <- here::here("data","S18","labelled")
+main_data_path <- here::here("data","S18","Export_Analysis-01_05_2024-17-02-34")
+LabelledSignalData <- readRDS(file = here::here(labelled_data_path,"LabelledSignalData.rds"))
+labelled_LongData <- LabelledSignalData %>% unnest(signal)
 ```
 
 
-How many regions are there with the Penta measurements.
+Most regions only have 1 or 2 types of measurements, not all 3 ( RVp, LVp, SR).
 
 ```{r}
 data <- tibble(files = list.files(path = here::here("data","S18","Export_Analysis-01_05_2024-17-02-34"),
@@ -30,7 +34,71 @@ number_regions <- files_and_regions %>% distinct(region) %>% count()
 
 ```
 
-Most regions only have 1 or 2 types of measurements, not all 3 ( RVp, LVp, SR).
+
+Signal length varies. 
+```{r}
+
+summary_signals <- labelled_LongData %>% group_by(WaveFront, Catheter_Type, Point_Number) %>%  summarise(n = n()) %>% arrange(n)
+summary_signals
+```
+
+Lets investigate the distribution of signals and see what influences the scar / no scar category.
+
+```
+labelled_LongData <- labelled_LongData %>% group_by(Point_Number,WaveFront, Catheter_Type) %>% mutate(Row = row_number()) %>% ungroup()
 
 
-TODO More EDA ....
+```
+
+What do the signals look like?
+
+```
+p <- labelled_LongData %>% group_by(WaveFront, Catheter_Type, Point_Number) %>% 
+  plot_ly(., x = ~Row,y = ~signal_data, type = 'scatter', mode = 'lines',
+  color = ~Categorical_Label) 
+  
+  
+```
+
+To do Scatter with all data - is there a relationship with Point numbers or location.
+```
+
+p <- labelled_LongData %>% group_by(WaveFront, Catheter_Type, Point_Number) %>% 
+  plot_ly(., x = ~Point_Number,y = ~signal_data, type = 'scatter', mode = 'markers',
+  color = ~Categorical_Label) 
+
+
+```
+
+RvP has signals of more duration, especially compared to LvP. 
+Possible outlier with a LVP datapoint.
+
+
+```
+
+
+ 
+q <- labelled_LongData %>% group_by(WaveFront, Catheter_Type, Point_Number) %>% 
+  plot_ly(., x = ~Row,y = ~signal_data, type = 'scatter', mode = 'lines',
+  color = ~WaveFront) 
+  
+
+q
+
+```
+
+to be continued - slow to render...
+
+```
+g <- labelled_LongData %>%  ggplot(aes(x = Row, y = signal_data, color = Categorical_Label)) +
+  geom_point() + 
+  facet_wrap(vars(WaveFront),nrow = 3, ncol = 1)
+
+ggplotly(g)
+
+
+
+```
+
+
+
