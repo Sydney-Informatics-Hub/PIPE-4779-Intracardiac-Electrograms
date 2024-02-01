@@ -12,12 +12,22 @@ Load libraries and aggregated data
 library(here)
 library(tidyverse)
 library(stringr)
-labelled_data_path <- here::here("data","S18","labelled")
-main_data_path <- here::here("data","S18","Export_Analysis-01_05_2024-17-02-34")
-LabelledSignalData <- readRDS(file = here::here(labelled_data_path,"LabelledSignalData.rds"))
+source("paths.R")
+LabelledSignalData <- readRDS(file = here::here(generated_data_path,"LabelledSignalDataS18.rds"))
 labelled_LongData <- LabelledSignalData %>% unnest(signal)
 ```
 
+```{r}
+#Double check generated data is consistent with data dictionary
+LabelledSignalData <- readRDS(file = here::here(generated_data_path,"LabelledSignalDataS18.rds"))
+
+LabelledSignalData %>%
+  filter(WaveFront == "SR",Catheter_Type == "Penta", Point_Number == 4815) %>%
+  select(signal) %>%
+  unlist() %>%
+  plot(type = "l")
+
+```
 
 Most regions only have 1 or 2 types of measurements, not all 3 ( RVp, LVp, SR).
 
@@ -44,7 +54,7 @@ summary_signals
 
 Lets investigate the distribution of signals and see what influences the scar / no scar category.
 
-```
+```{r}
 labelled_LongData <- labelled_LongData %>% group_by(Point_Number,WaveFront, Catheter_Type) %>% mutate(Row = row_number()) %>% ungroup()
 
 
@@ -52,7 +62,7 @@ labelled_LongData <- labelled_LongData %>% group_by(Point_Number,WaveFront, Cath
 
 What do the signals look like?
 
-```
+```{r}
 p <- labelled_LongData %>% group_by(WaveFront, Catheter_Type, Point_Number) %>% 
   plot_ly(., x = ~Row,y = ~signal_data, type = 'scatter', mode = 'lines',
   color = ~Categorical_Label) 
@@ -61,7 +71,7 @@ p <- labelled_LongData %>% group_by(WaveFront, Catheter_Type, Point_Number) %>%
 ```
 
 To do Scatter with all data - is there a relationship with Point numbers or location.
-```
+```{r}
 
 p <- labelled_LongData %>% group_by(WaveFront, Catheter_Type, Point_Number) %>% 
   plot_ly(., x = ~Point_Number,y = ~signal_data, type = 'scatter', mode = 'markers',
@@ -74,7 +84,7 @@ RvP has signals of more duration, especially compared to LvP.
 Possible outlier with a LVP datapoint.
 
 
-```
+```{r}
 
 
  
@@ -86,15 +96,25 @@ q <- labelled_LongData %>% group_by(WaveFront, Catheter_Type, Point_Number) %>%
 q
 
 ```
+Relationship between regions in space
 
-to be continued - slow to render...
+```{r}
+spatial_data <- LabelledSignalData %>% mutate(distance = sqrt(X**2 + Y**2 + Z**2)) %>% 
+  select(distance,Histology_Biopsy_Label) %>% 
+  na.omit() %>% filter(Histology_Biopsy_Label != "no scar") %>% 
+  filter(Histology_Biopsy_Label != "no_scar")
+
+spatial_data %>% select(Histology_Biopsy_Label) %>% unique()
 
 ```
-g <- labelled_LongData %>%  ggplot(aes(x = Row, y = signal_data, color = Categorical_Label)) +
-  geom_point() + 
-  facet_wrap(vars(WaveFront),nrow = 3, ncol = 1)
+to be continued - slow to render...
 
-ggplotly(g)
+```{r}
+#g <- labelled_LongData %>%  ggplot(aes(x = Row, y = signal_data, color = Categorical_Label)) +
+#  geom_point() + 
+#  facet_wrap(vars(WaveFront),nrow = 3, ncol = 1)
+
+#ggplotly(g)
 
 
 

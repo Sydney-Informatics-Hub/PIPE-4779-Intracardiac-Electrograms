@@ -3,34 +3,42 @@ library(tidyverse)
 library(readxl) # excel files
 library(xml2) #xml files
 library(plotly)
-
-# run retrieve_all_signals() to aggregate the data for animal S18
+source("paths.R")
+# run retrieve_all_signals("S18") to aggregate the data for animal S18. Will Save rds file.
+# run incorporate_histology("S18") to merge with depth information. Will Save rds file.
+# run write_as_long_format("S18") to save as a csv in long format (for possible python stuff)
 # checks are done to make sure the extracted signal aligns with the data dictionary given
 
-
-labelled_data_path <- here::here("data","S18","labelled")
-
-main_data_path <- here::here("data","S18","Export_Analysis-01_05_2024-17-02-34")
-
-# Aggregating Labelled Data
-LVpLabelledData <- read_excel(here::here(labelled_data_path,"cleaned_9-1-1-ReLV LVp Penta_car_labelled.xlsx")) %>%
-  mutate(Categorical_Label = ifelse(Categorical_Label == -1,"Scar","NoScar"),
-                                    Catheter_Type = "Penta") %>%
-  select(c(-1)) %>% mutate(WaveFront = "LVp")
+#sheep_name <- "S20"
+#get_paths(sheep_name)
 
 
-RVpLabelledData <- read_excel(here::here(labelled_data_path,"cleaned_9-1-ReLV RVp Penta_car labelled.xlsx"))  %>%
-  mutate(Categorical_Label = ifelse(Categorical_Label == -1,"Scar","NoScar"),
-         Catheter_Type = "Penta") %>%
-  select(c(-1)) %>% mutate(WaveFront = "RVp")
+load_sheep <- function(sheep_name) {
+  get_paths(sheep_name)
 
-SRLabelledData <- read_excel(here::here(labelled_data_path,"cleaned_9-LV SR Penta_car_labelled.xlsx")) %>%
-  mutate(Categorical_Label = ifelse(Categorical_Label == -1,"Scar","NoScar"),
-         Catheter_Type = "Penta") %>%
-  select(c(-1)) %>% mutate(WaveFront = "SR")
+  # Aggregating Labelled Data
+  LVpLabelledData <- read_excel(here::here(labelled_data_path,"cleaned_9-1-1-ReLV LVp Penta_car_labelled.xlsx")) %>%
+    mutate(Categorical_Label = ifelse(Categorical_Label == -1,"Scar","NoScar"),
+                                      Catheter_Type = "Penta") %>%
+    select(c(-1)) %>% mutate(WaveFront = "LVp")
 
-LabelledData <- bind_rows(LVpLabelledData,RVpLabelledData,SRLabelledData)
-rm(LVpLabelledData,RVpLabelledData,SRLabelledData)
+
+  RVpLabelledData <- read_excel(here::here(labelled_data_path,"cleaned_9-1-ReLV RVp Penta_car labelled.xlsx"))  %>%
+    mutate(Categorical_Label = ifelse(Categorical_Label == -1,"Scar","NoScar"),
+           Catheter_Type = "Penta") %>%
+    select(c(-1)) %>% mutate(WaveFront = "RVp")
+
+  SRLabelledData <- read_excel(here::here(labelled_data_path,"cleaned_9-LV SR Penta_car_labelled.xlsx")) %>%
+    mutate(Categorical_Label = ifelse(Categorical_Label == -1,"Scar","NoScar"),
+           Catheter_Type = "Penta") %>%
+    select(c(-1)) %>% mutate(WaveFront = "SR")
+
+  LabelledData <- bind_rows(LVpLabelledData,RVpLabelledData,SRLabelledData)
+  LabelledData <- LabelledData %>% mutate(sheep = sheep_name)
+
+  rm(LVpLabelledData,RVpLabelledData,SRLabelledData)
+  return(LabelledData)
+}
 
 
 find_window <- function(WaveFront, Catheter_Type, Point_Number) {
@@ -108,25 +116,35 @@ get_signal_data <- function(WaveFront, Catheter_Type, Point_Number) {
   return(signal)
 }
 
-retrieve_all_signals <- function() {
+retrieve_all_signals <- function(sheep_name) {
+  LabelledSignalData <- load_sheep(sheep_name)
   LabelledSignalData <- LabelledData %>% rowwise()  %>% mutate(signal = list(get_signal_data(WaveFront, Catheter_Type, Point_Number)))
-  saveRDS(LabelledSignalData,file = here::here(labelled_data_path,"LabelledSignalData.rds"))
+  saveRDS(LabelledSignalData,file = here::here(generated_data_path,paste0("LabelledSignalData",sheep_name,".rds")))
   }
 
-# this confirms the graph in the data dictionary
-data <- get_signal_data("SR","Penta",4815) %>% as_tibble()
-plotme <- plot_ly(data, y = ~`20A_17-18(129)`, type = 'scatter', mode = 'lines')
-plotme
+load_histology <- function() {
+  histology_labels <- read_csv(file = here::here("data","cleaned_histology_all.csv")) %>%
+    select(Animal,Specimen_ID,Endo3_anyscar,IM3_anyscar,Epi3_anyscar) %>%
+    rename(Histology_Biopsy_Label = Specimen_ID, endocardium_scar = Endo3_anyscar,intramural_scar = IM3_anyscar, epicardial_scar = Epi3_anyscar) %>%
+    na.omit()
+  return(histology_labels)
 
-#Double check this is the same thing in the aggregate data.
-LabelledSignalData <- readRDS(file = here::here(labelled_data_path,"LabelledSignalData.rds"))
+}
 
-LabelledSignalData %>%
-  filter(WaveFront == "SR",Catheter_Type == "Penta", Point_Number == 4815) %>%
-  select(signal) %>%
-  unlist() %>%
-  plot(type = "l")
+incorporate_histology <- function(sheep_name) {
+  #histology information regarding if scar is present at different depths stored here.
+  #TODO
+  LabelledSignalData <- readRDS(file =here::here(generated_data_path,paste0("LabelledSignalData",sheep_name,".rds")))
+  histology <- load_histology()
+  result <- left_join(LabelledSignalData, histology, by = "Histology_Biopsy_Label")
+  #saveRDS(result,readRDS(file =here::here(generated_data_path,paste0("LabelledSignalData",sheep_name,".rds"))))
 
+}
+
+write_as_long_format <- function(sheep_name){
+  LabelledSignalData <- readRDS(file =here::here(generated_data_path,paste0("LabelledSignalData",sheep_name,".rds")))
+
+}
 
 
 
