@@ -3,11 +3,13 @@ library(tidyverse)
 library(readxl) # excel files
 library(xml2) #xml files
 library(plotly)
+library(arrow)
 source("paths.R")
 # run retrieve_all_signals("S18") to aggregate the data for animal S18. Will Save rds file.
-# run incorporate_histology("S18") to merge with depth information. Will Save rds file.
+# run incorporate_histology("S18") to merge with histology and create NestedData rds file
 # run write_as_long_format("S18") to save as a csv in long format (for possible python stuff)
-# checks are done to make sure the extracted signal aligns with the data dictionary given
+# run write_as_parquet("S18") to save nested data as parquet file
+
 
 #sheep_name <- "S20"
 #get_paths(sheep_name)
@@ -17,18 +19,18 @@ load_sheep <- function(sheep_name) {
   get_paths(sheep_name)
 
   # Aggregating Labelled Data
-  LVpLabelledData <- read_excel(here::here(labelled_data_path,"cleaned_9-1-1-ReLV LVp Penta_car_labelled.xlsx")) %>%
+  LVpLabelledData <- read_excel(here::here(labelled_data_path,"cleaned_LVp Penta_car_labelled.xlsx")) %>%
     mutate(Categorical_Label = ifelse(Categorical_Label == -1,"Scar","NoScar"),
                                       Catheter_Type = "Penta") %>%
     select(c(-1)) %>% mutate(WaveFront = "LVp")
 
 
-  RVpLabelledData <- read_excel(here::here(labelled_data_path,"cleaned_9-1-ReLV RVp Penta_car labelled.xlsx"))  %>%
+  RVpLabelledData <- read_excel(here::here(labelled_data_path,"cleaned_LVp Penta_car_labelled.xlsx"))  %>%
     mutate(Categorical_Label = ifelse(Categorical_Label == -1,"Scar","NoScar"),
            Catheter_Type = "Penta") %>%
     select(c(-1)) %>% mutate(WaveFront = "RVp")
 
-  SRLabelledData <- read_excel(here::here(labelled_data_path,"cleaned_9-LV SR Penta_car_labelled.xlsx")) %>%
+  SRLabelledData <- read_excel(here::here(labelled_data_path,"cleaned_SR Penta_car_labelled.xlsx")) %>%
     mutate(Categorical_Label = ifelse(Categorical_Label == -1,"Scar","NoScar"),
            Catheter_Type = "Penta") %>%
     select(c(-1)) %>% mutate(WaveFront = "SR")
@@ -89,6 +91,9 @@ get_signal_data <- function(WaveFront, Catheter_Type, Point_Number) {
   # Assumes rows where the data starts is constant.
 
   woi <- find_window(WaveFront,Catheter_Type,Point_Number)
+  if (is.null(woi)) {
+    return() #return null - could find signal info
+  }
   txt_file <- find_signal_file(WaveFront,Catheter_Type,Point_Number)
   tabular_content <-  read_table(txt_file, skip = 3)
   raw_ecg_gain <- str_extract(read_lines(txt_file,n_max = 4), "^Raw ECG to MV \\(gain\\) = ([0-9.]+)$") %>%
@@ -118,7 +123,7 @@ get_signal_data <- function(WaveFront, Catheter_Type, Point_Number) {
 
 retrieve_all_signals <- function(sheep_name) {
   LabelledSignalData <- load_sheep(sheep_name)
-  LabelledSignalData <- LabelledData %>% rowwise()  %>% mutate(signal = list(get_signal_data(WaveFront, Catheter_Type, Point_Number)))
+  LabelledSignalData <- LabelledSignalData %>% rowwise()  %>% mutate(signal = list(get_signal_data(WaveFront, Catheter_Type, Point_Number)))
   saveRDS(LabelledSignalData,file = here::here(generated_data_path,paste0("LabelledSignalData",sheep_name,".rds")))
   }
 
@@ -132,20 +137,26 @@ load_histology <- function() {
 }
 
 incorporate_histology <- function(sheep_name) {
-  #histology information regarding if scar is present at different depths stored here.
-  #TODO
+  #histology information regarding if scar is present at different depths
   LabelledSignalData <- readRDS(file =here::here(generated_data_path,paste0("LabelledSignalData",sheep_name,".rds")))
   histology <- load_histology()
   result <- left_join(LabelledSignalData, histology, by = "Histology_Biopsy_Label")
-  #saveRDS(result,readRDS(file =here::here(generated_data_path,paste0("LabelledSignalData",sheep_name,".rds"))))
+  saveRDS(result,here::here(generated_data_path,paste0("NestedData",sheep_name,".rds")))
 
 }
 
 write_as_long_format <- function(sheep_name){
-  LabelledSignalData <- readRDS(file =here::here(generated_data_path,paste0("LabelledSignalData",sheep_name,".rds")))
-
+  NestedData <- readRDS(file = here::here(generated_data_path,paste0("NestedData",sheep_name,".rds")))
+  LongData <- NestedData %>% unnest(signal)
+  write_csv(LongData, file = here::here(generated_data_path,paste0("NestedData",sheep_name,".csv")))
 }
 
+write_as_parquet <- function(sheep_name){
+  NestedData <- readRDS(file = here::here(generated_data_path,paste0("NestedData",sheep_name,".rds")))
+  parquet_file <- here::here(generated_data_path,paste0("NestedData",sheep_name,".parquet"))
+  write_parquet(NestedData, parquet_file)
+
+}
 
 
 
