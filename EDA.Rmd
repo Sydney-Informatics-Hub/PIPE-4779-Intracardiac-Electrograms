@@ -13,9 +13,10 @@ library(here)
 library(tidyverse)
 library(stringr)
 source("paths.R")
-sheep_name <- "S20"
+sheep_name <- "S17"
 get_paths(sheep_name)
 LabelledSignalData <- readRDS(file = here::here(generated_data_path,paste0("NestedData",sheep_name,".rds")))
+
 labelled_LongData <- LabelledSignalData %>% unnest(signal)
 ```
 

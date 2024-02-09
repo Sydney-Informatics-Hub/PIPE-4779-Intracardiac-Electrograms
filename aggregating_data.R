@@ -5,16 +5,24 @@ library(xml2) #xml files
 library(plotly)
 library(arrow)
 source("paths.R")
-# run retrieve_all_signals("S18") to aggregate the data for animal S18. Will Save rds file.
-# run incorporate_histology("S18") to merge with histology and create NestedData rds file
-# run write_as_long_format("S18") to save as a csv in long format (for possible python stuff)
-# run write_as_parquet("S18") to save nested data as parquet file
+# "S18", "S20" and "S17" available as sheeps
+# run retrieve_all_signals("S17") to aggregate the data for animal S18. Will Save rds file.
+# run incorporate_histology("S17") to merge with histology and create NestedData rds file
+# run write_as_long_format("S17") to save as a csv in long format (for possible python stuff)
+# run write_as_parquet("S17") to save nested data as parquet file
 
+# run_all("S17")
 
 #sheep_name <- "S20"
 #get_paths(sheep_name)
 
+run_all <- function(sheep_name) {
+  retrieve_all_signals(sheep_name)
+  incorporate_histology(sheep_name)
+  write_as_long_format(sheep_name)
+  write_as_parquet(sheep_name)
 
+}
 load_sheep <- function(sheep_name) {
   get_paths(sheep_name)
 
@@ -42,6 +50,45 @@ load_sheep <- function(sheep_name) {
   return(LabelledData)
 }
 
+find_from_woi <- function(WaveFront, Catheter_Type, Point_Number) {
+  file_pattern <- paste0(".*", WaveFront, "\\s", Catheter_Type, "_P", Point_Number, "_Point_Export\\.xml$")
+  matching_file <- list.files(path = main_data_path,
+                              pattern = file_pattern, full.names = TRUE)
+  #expect one file
+  if (length(matching_file) == 1 ) {
+    xml_data <- read_xml(matching_file)
+    # Define XPath expressions to extract key elements from xml file
+    reference_annotation <- xml_find_all(xml_data, "//Annotations/@Reference_Annotation") %>%
+      xml_text() %>% as.numeric()
+    woi_from <- xml_find_all(xml_data, "//WOI/@From") %>%
+      xml_text() %>% as.numeric()
+    woi_to <- xml_find_all(xml_data, "//WOI/@To") %>%
+      xml_text() %>% as.numeric()
+    return(reference_annotation + woi_from)
+  } else {
+    return() # returns NULL and can use is.null() to check
+  }
+}
+
+find_to_woi <- function(WaveFront, Catheter_Type, Point_Number) {
+  file_pattern <- paste0(".*", WaveFront, "\\s", Catheter_Type, "_P", Point_Number, "_Point_Export\\.xml$")
+  matching_file <- list.files(path = main_data_path,
+                              pattern = file_pattern, full.names = TRUE)
+  #expect one file
+  if (length(matching_file) == 1 ) {
+    xml_data <- read_xml(matching_file)
+    # Define XPath expressions to extract key elements from xml file
+    reference_annotation <- xml_find_all(xml_data, "//Annotations/@Reference_Annotation") %>%
+      xml_text() %>% as.numeric()
+    woi_from <- xml_find_all(xml_data, "//WOI/@From") %>%
+      xml_text() %>% as.numeric()
+    woi_to <- xml_find_all(xml_data, "//WOI/@To") %>%
+      xml_text() %>% as.numeric()
+    return(reference_annotation + woi_to)
+  } else {
+    return() # returns NULL and can use is.null() to check
+  }
+}
 
 find_window <- function(WaveFront, Catheter_Type, Point_Number) {
   # Extracts key elements from the Point Export Files.
@@ -114,16 +161,63 @@ get_signal_data <- function(WaveFront, Catheter_Type, Point_Number) {
   }
 
   signal <- tabular_content %>% select(matches(channel)) %>%
-            slice(.,(woi$From + 5):(woi$To +5) ) * raw_ecg_gain
+            slice(.,woi$From:woi$To ) * raw_ecg_gain
 
   #standardising column name irrespective of channel name
   signal <- signal %>% rename(.,"signal_data" = names(signal))
   return(signal)
 }
 
+
+get_raw_signal_data <- function(WaveFront, Catheter_Type, Point_Number) {
+
+  woi <- find_window(WaveFront,Catheter_Type,Point_Number)
+  if (is.null(woi)) {
+    return() #return null - could find signal info
+  }
+  txt_file <- find_signal_file(WaveFront,Catheter_Type,Point_Number)
+  tabular_content <-  read_table(txt_file, skip = 3)
+  raw_ecg_gain <- str_extract(read_lines(txt_file,n_max = 4), "^Raw ECG to MV \\(gain\\) = ([0-9.]+)$") %>%
+    parse_number()
+  raw_ecg_gain <- raw_ecg_gain[!is.na(raw_ecg_gain)]
+
+  #double check gain and channels are extracted from txt file
+
+  if (!is.numeric(raw_ecg_gain)) {
+    return() #return null
+  }
+
+  channel <- str_match(read_lines(txt_file,n_max = 4), "Bipolar Mapping Channel=(\\w+-\\w+)")[3 , 2]
+  #find appropriate column to extract bipolar recordings given channel and window of interest
+
+  if (is.null(channel)) {
+    return() #return null
+  }
+
+  signal <- tabular_content %>% select(matches(channel)) * raw_ecg_gain
+
+  #standardising column name irrespective of channel name
+  raw_signal <- signal %>% rename(.,"signal_data" = names(signal))
+  return(raw_signal)
+}
+
+
+
 retrieve_all_signals <- function(sheep_name) {
   LabelledSignalData <- load_sheep(sheep_name)
-  LabelledSignalData <- LabelledSignalData %>% rowwise()  %>% mutate(signal = list(get_signal_data(WaveFront, Catheter_Type, Point_Number)))
+  #test
+  #LabelledSignalData <- LabelledSignalData %>% head(10)
+  LabelledSignalData <- LabelledSignalData %>% rowwise() %>%
+   mutate(signal = list(get_signal_data(WaveFront, Catheter_Type, Point_Number)),
+           rawsignal = list(get_raw_signal_data(WaveFront, Catheter_Type, Point_Number)))
+
+
+  LabelledSignalData <- LabelledSignalData %>% rowwise() %>% mutate(From = list(find_from_woi(WaveFront, Catheter_Type, Point_Number)) %>% unlist() %>% as.integer(),
+                                                      To = list(find_to_woi(WaveFront, Catheter_Type, Point_Number)) %>% unlist() %>% as.integer())
+
+  #LabelledSignalData <- LabelledSignalData %>% rowwise() %>% mutate(From = list(find_from_woi(WaveFront, Catheter_Type, Point_Number)),
+  #                                                                  To = list(find_to_woi(WaveFront, Catheter_Type, Point_Number)))
+
   saveRDS(LabelledSignalData,file = here::here(generated_data_path,paste0("LabelledSignalData",sheep_name,".rds")))
   }
 
