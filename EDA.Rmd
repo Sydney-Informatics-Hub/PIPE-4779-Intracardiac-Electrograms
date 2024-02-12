@@ -12,19 +12,23 @@ Load libraries and aggregated data
 library(here)
 library(tidyverse)
 library(stringr)
+library(skimr)
 source("paths.R")
-sheep_name <- "S17"
-get_paths(sheep_name)
-LabelledSignalData <- readRDS(file = here::here(generated_data_path,paste0("NestedData",sheep_name,".rds")))
+sheep_name <- "S18"
+#get_paths(sheep_name)
 
-labelled_LongData <- LabelledSignalData %>% unnest(signal)
+aggregate_data <- list.files(path = generated_data_path, 
+            pattern = "NestedDataS[0-9]+\\.rds", 
+            full.names = TRUE) %>% map(readRDS) %>% bind_rows()
+
+
+labelled_LongData <- aggregate_data %>% select(-rawsignal, From,To,Animal) %>% unnest(signal)
 ```
 
 ```{r}
 #Double check generated data is consistent with data dictionary
-LabelledSignalData <- readRDS(file = here::here(generated_data_path,"LabelledSignalDataS18.rds"))
 
-LabelledSignalData %>%
+aggregate_data %>% filter(sheep == "S18") %>% 
   filter(WaveFront == "SR",Catheter_Type == "Penta", Point_Number == 4815) %>%
   select(signal) %>%
   unlist() %>%
@@ -32,26 +36,30 @@ LabelledSignalData %>%
 
 ```
 
-Most regions only have 1 or 2 types of measurements, not all 3 ( RVp, LVp, SR).
+
+High level split of data TODO.
 
 ```{r}
-data <- tibble(files = list.files(path = here::here("data","S18","Export_Analysis-01_05_2024-17-02-34"),
-                                  pattern = "*.xml"))
-
-
-files_and_regions <- data %>% filter(str_detect(files,pattern = "Penta.*Export")) %>% 
-  mutate(region =  str_extract(files, "_P(\\d+)_") %>% gsub("_", "",.), 
-         number = as.numeric(gsub("P","",region))) %>% arrange(number)
-
-number_regions <- files_and_regions %>% distinct(region) %>% count()
+#TODO
+ aggregate_data %>% select(across(where(is.numeric))) %>% skim(.)
 
 ```
 
+Count of Scar and no Scar by category. Control sheep S17 still has scar labels - investigate.
+```{r}
+aggregate_data %>% filter(!is.null(signal)) %>% group_by(sheep,Catheter_Type,WaveFront,Categorical_Label) %>% 
+  summarise(n = n()) 
 
-Signal length varies. 
+
+```
+
+ Fix the below to use aggregate_data now and some plots!! TODO
+ 
+ 
+Distribution of signal length. 
 ```{r}
 
-summary_signals <- labelled_LongData %>% group_by(WaveFront, Catheter_Type, Point_Number) %>%  summarise(n = n()) %>% arrange(n)
+summary_signals <- aggregate_data %>% group_by(WaveFront, Catheter_Type, Point_Number) %>%  summarise(n = n()) %>% arrange(n)
 summary_signals
 ```
 

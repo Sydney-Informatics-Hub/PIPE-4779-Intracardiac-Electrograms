@@ -11,7 +11,7 @@ source("paths.R")
 # run write_as_long_format("S17") to save as a csv in long format (for possible python stuff)
 # run write_as_parquet("S17") to save nested data as parquet file
 
-# run_all("S17")
+# run_all("S17") #done "S18" "S20"
 
 #sheep_name <- "S20"
 #get_paths(sheep_name)
@@ -205,18 +205,25 @@ get_raw_signal_data <- function(WaveFront, Catheter_Type, Point_Number) {
 
 retrieve_all_signals <- function(sheep_name) {
   LabelledSignalData <- load_sheep(sheep_name)
-  #test
-  #LabelledSignalData <- LabelledSignalData %>% head(10)
+
   LabelledSignalData <- LabelledSignalData %>% rowwise() %>%
    mutate(signal = list(get_signal_data(WaveFront, Catheter_Type, Point_Number)),
            rawsignal = list(get_raw_signal_data(WaveFront, Catheter_Type, Point_Number)))
 
 
-  LabelledSignalData <- LabelledSignalData %>% rowwise() %>% mutate(From = list(find_from_woi(WaveFront, Catheter_Type, Point_Number)) %>% unlist() %>% as.integer(),
-                                                      To = list(find_to_woi(WaveFront, Catheter_Type, Point_Number)) %>% unlist() %>% as.integer())
+  # bring extra woi data only if there is a signal
+  no_signals <- LabelledSignalData %>% filter(is.null(signal)) %>% mutate(From = 0, To = 0)
 
-  #LabelledSignalData <- LabelledSignalData %>% rowwise() %>% mutate(From = list(find_from_woi(WaveFront, Catheter_Type, Point_Number)),
-  #                                                                  To = list(find_to_woi(WaveFront, Catheter_Type, Point_Number)))
+  with_signals <- LabelledSignalData %>% filter(!is.null(signal)) %>% rowwise() %>% mutate(From = list(find_from_woi(WaveFront, Catheter_Type, Point_Number)) %>% unlist() %>% as.integer(),
+                                              To = list(find_to_woi(WaveFront, Catheter_Type, Point_Number)) %>% unlist() %>% as.integer())
+
+  LabelledSignalData <- bind_rows(with_signals,no_signals)
+
+  #format and sort appropriately
+  LabelledSignalData <- LabelledSignalData %>%
+    mutate(across(where(is.character), as.factor))
+
+  LabelledSignalData <- LabelledSignalData %>% arrange(sheep,Catheter_Type,WaveFront,Point_Number)
 
   saveRDS(LabelledSignalData,file = here::here(generated_data_path,paste0("LabelledSignalData",sheep_name,".rds")))
   }
