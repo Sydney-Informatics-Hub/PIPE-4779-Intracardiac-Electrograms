@@ -13,16 +13,39 @@ library(here)
 library(tidyverse)
 library(stringr)
 library(skimr)
+library(plotly)
 source("paths.R")
 sheep_name <- "S18"
-#get_paths(sheep_name)
+get_paths(sheep_name)
 
 aggregate_data <- list.files(path = generated_data_path, 
             pattern = "NestedDataS[0-9]+\\.rds", 
             full.names = TRUE) %>% map(readRDS) %>% bind_rows()
 
 
-labelled_LongData <- aggregate_data %>% select(-rawsignal, From,To,Animal) %>% unnest(signal)
+```
+
+Seems to be Scar label where the 3 layers are all zero indicating inconsistency. 
+Affects 3 out of 17 thousand observations.
+
+```{r}
+
+inconsistency <- aggregate_data %>% mutate(AnyScar = sum(endocardium_scar + intramural_scar + epicardial_scar)) %>% filter(Categorical_Label == "Scar" & AnyScar == 0) 
+```
+
+
+Hence will refer to a Scar based on the biopsy layers
+```{r}
+
+#aggregate_data <- aggregate_data %>% mutate(AnyScar = sum(endocardium_scar + intramural_scar + epicardial_scar)) %>% mutate(Categorical_Label = ifelse(AnyScar >= 1,"Scar","NoScar"))
+```
+
+Setting up data for rest of EDA.
+```{r}
+cleaned_aggregate_data <- aggregate_data %>% filter(!is.null(signal)) %>% 
+  filter(!is.na(endocardium_scar))
+cleaned_aggregate_long_data <- cleaned_aggregate_data %>% select(-rawsignal, -From,-To,-Animal) %>% unnest(signal)
+
 ```
 
 ```{r}
@@ -36,37 +59,68 @@ aggregate_data %>% filter(sheep == "S18") %>%
 
 ```
 
-
-High level split of data TODO.
-
+Coincidently, the raw data looks like
 ```{r}
-#TODO
- aggregate_data %>% select(across(where(is.numeric))) %>% skim(.)
+
+aggregate_data %>% filter(sheep == "S18") %>% 
+  filter(WaveFront == "SR",Catheter_Type == "Penta", Point_Number == 4815) %>%
+  select(rawsignal) %>%
+  unlist() %>%
+  plot(type = "l")
 
 ```
 
-Count of Scar and no Scar by category. Control sheep S17 still has scar labels - investigate.
+High level split of count of observations with and without histology info. The histology data is sometimes blank and a signal is sometimes not present. Generally
+the number of observations that have histology labels (0 or 1) are outnumber by those that dont, particularly with S20.
+
 ```{r}
-aggregate_data %>% filter(!is.null(signal)) %>% group_by(sheep,Catheter_Type,WaveFront,Categorical_Label) %>% 
-  summarise(n = n()) 
+aggregate_data %>% group_by(sheep,Catheter_Type,WaveFront) %>% 
+  summarise(histology_count = sum(!is.na(endocardium_scar)),
+            no_histology_count = sum(is.na(endocardium_scar))) %>% 
+  arrange(sheep,desc(histology_count))
+
+```
+
+
+Count of Scar and no Scar by category. 
+Control sheep S17 still has scar labels - investigate.
+```{r}
+
+aggregate_data %>% filter(!is.null(signal)) %>% group_by(sheep,Catheter_Type,WaveFront) %>% 
+  summarise(scar = sum((Categorical_Label == "Scar")),
+            NoScar = sum(Categorical_Label == "NoScar")) 
 
 
 ```
 
- Fix the below to use aggregate_data now and some plots!! TODO
  
  
-Distribution of signal length. 
+ 
+Distribution of signal length assuming there is a signal. Reflects manual calibration 
+of starting point for window of interest.
 ```{r}
 
-summary_signals <- aggregate_data %>% group_by(WaveFront, Catheter_Type, Point_Number) %>%  summarise(n = n()) %>% arrange(n)
-summary_signals
+summary_window_length <- aggregate_data %>% 
+  mutate(length_window = To - From) %>% filter(length_window != 0) %>% 
+  group_by(WaveFront, Categorical_Label) %>% select(length_window) 
+  
+
+summary_window_length %>%
+  plot_ly(x = ~length_window, type = "histogram") %>%
+  layout(barmode = "overlay", 
+         xaxis = list(title = "Variable to Plot"),
+         yaxis = list(title = "Frequency"),
+         title = "Histogram by Factor1 and Factor2",
+         facet_row = ~WaveFront,
+         facet_col = ~Categorical_Label)
 ```
 
-Lets investigate the distribution of signals and see what influences the scar / no scar category.
+
+
+Lets investigate the distribution of signals and see what influences the scar / no scar category. HERE - Looks ODD! 
 
 ```{r}
-labelled_LongData <- labelled_LongData %>% group_by(Point_Number,WaveFront, Catheter_Type) %>% mutate(Row = row_number()) %>% ungroup()
+cleaned_aggregate_long_data <- cleaned_aggregate_long_data %>% group_by(Point_Number,WaveFront, Catheter_Type) %>% mutate(Row = row_number()) %>% ungroup()
 
 
 ```
@@ -74,7 +128,7 @@ labelled_LongData <- labelled_LongData %>% group_by(Point_Number,WaveFront, Cath
 What do the signals look like?
 
 ```{r}
-p <- labelled_LongData %>% group_by(WaveFront, Catheter_Type, Point_Number) %>% 
+p <- cleaned_aggregate_long_data %>% group_by(WaveFront, Catheter_Type, Point_Number) %>% 
   plot_ly(., x = ~Row,y = ~signal_data, type = 'scatter', mode = 'lines',
   color = ~Categorical_Label) 
   
