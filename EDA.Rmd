@@ -14,6 +14,7 @@ library(tidyverse)
 library(stringr)
 library(skimr)
 library(plotly)
+library(RColorBrewer)
 source("paths.R")
 sheep_name <- "S18"
 get_paths(sheep_name)
@@ -26,7 +27,7 @@ aggregate_data <- list.files(path = generated_data_path,
 ```
 
 Seems to be Scar label where the 3 layers are all zero indicating inconsistency. 
-Affects 3 out of 17 thousand observations.
+Affects 3 out of 17 thousand observations. Suspect Scar label to be misleading and Scar will be defined by biopsy layers.
 
 ```{r}
 
@@ -34,17 +35,30 @@ inconsistency <- aggregate_data %>% mutate(AnyScar = sum(endocardium_scar + intr
 ```
 
 
-Hence will refer to a Scar based on the biopsy layers
+Note Done: Hence will refer to a Scar based on the biopsy layers
 ```{r}
 
-#aggregate_data <- aggregate_data %>% mutate(AnyScar = sum(endocardium_scar + intramural_scar + epicardial_scar)) %>% mutate(Categorical_Label = ifelse(AnyScar >= 1,"Scar","NoScar"))
+aggregate_data <- aggregate_data %>% mutate(AnyScar = sum(endocardium_scar + intramural_scar + epicardial_scar)) %>%
+  mutate(Categorical_Label = case_when(
+    is.na(AnyScar) ~ NA_character_,
+    AnyScar >= 1 ~ "Scar",
+    AnyScar == 0 ~ "NoScar"
+  ))
+  
+  
+
 ```
 
 Setting up data for rest of EDA.
 ```{r}
 cleaned_aggregate_data <- aggregate_data %>% filter(!is.null(signal)) %>% 
   filter(!is.na(endocardium_scar))
+
+saveRDS(cleaned_aggregate_data,file = here::here(generated_data_path,"cleaned_aggregate_data.rds"))
+
 cleaned_aggregate_long_data <- cleaned_aggregate_data %>% select(-rawsignal, -From,-To,-Animal) %>% unnest(signal)
+
+saveRDS(cleaned_aggregate_long_data,file = here::here(generated_data_path,"cleaned_aggregate_long_data.rds"))
 
 ```
 
@@ -70,7 +84,7 @@ aggregate_data %>% filter(sheep == "S18") %>%
 
 ```
 
-High level split of count of observations with and without histology info. The histology data is sometimes blank and a signal is sometimes not present. Generally
+High level split of count of observations with and without histology info. Note - The histology data is sometimes blank and a signal is sometimes not present. Generally
 the number of observations that have histology labels (0 or 1) are outnumber by those that dont, particularly with S20.
 
 ```{r}
@@ -82,13 +96,17 @@ aggregate_data %>% group_by(sheep,Catheter_Type,WaveFront) %>%
 ```
 
 
-Count of Scar and no Scar by category. 
-Control sheep S17 still has scar labels - investigate.
+Given there is a signal file, the below summarises the categorical labels based on the calculated Categorical_Label of a Scar (count of 1's). What this means is the pool of data that can be fed into machine learning signficantly decreases.
+```{r}
+aggregate_data %>% filter(!is.null(signal)) %>% count(Categorical_Label)
+
+```
+
+Same thing but by group
 ```{r}
 
 aggregate_data %>% filter(!is.null(signal)) %>% group_by(sheep,Catheter_Type,WaveFront) %>% 
-  summarise(scar = sum((Categorical_Label == "Scar")),
-            NoScar = sum(Categorical_Label == "NoScar")) 
+  count(Categorical_Label)
 
 
 ```
@@ -115,25 +133,54 @@ summary_window_length %>%
          facet_col = ~Categorical_Label)
 ```
 
+Shows distinct windows of interest by sheep.
+```{r}
 
+ aggregate_data %>% filter(!is.na(Categorical_Label)) %>% 
+   mutate(length_window = To - From) %>% group_by(sheep) %>%  distinct(length_window) %>% 
+  arrange(sheep,length_window)
 
-Lets investigate the distribution of signals and see what influences the scar / no scar category. HERE - Looks ODD! 
+```
+
+Lets visualise signals and see what influences the scar / no scar category. 
+From here I'm working with the cleaned data (where there is a signal and histology is 0 or 1)
 
 ```{r}
-cleaned_aggregate_long_data <- cleaned_aggregate_long_data %>% group_by(Point_Number,WaveFront, Catheter_Type) %>% mutate(Row = row_number()) %>% ungroup()
+cleaned_aggregate_long_data <- cleaned_aggregate_long_data %>% group_by(sheep,Point_Number,WaveFront, Catheter_Type) %>% mutate(Row = row_number()) %>% ungroup()
 
 
 ```
 
-What do the signals look like?
+
+What do the signals look like? Click the Categories to highlight them
 
 ```{r}
-p <- cleaned_aggregate_long_data %>% group_by(WaveFront, Catheter_Type, Point_Number) %>% 
+# Define a color palette
+colors <- brewer.pal(n = 2, name = "Set1") 
+
+
+p <- cleaned_aggregate_long_data %>% select(Categorical_Label,signal_data,Row,sheep,WaveFront, Catheter_Type, Point_Number) %>% 
+  group_by(sheep,WaveFront, Catheter_Type, Point_Number) %>%
   plot_ly(., x = ~Row,y = ~signal_data, type = 'scatter', mode = 'lines',
-  color = ~Categorical_Label) 
+  color = ~Categorical_Label, colors = colors, line = list(width = 0.5),opacity = 0.8) 
   
-  
+p
 ```
+
+
+```{r}
+colors <- brewer.pal(n = 4, name = "Set3") 
+
+p <- cleaned_aggregate_long_data %>% select(Categorical_Label,signal_data,Row,sheep,WaveFront, Catheter_Type, Point_Number) %>% 
+  group_by(sheep,WaveFront, Catheter_Type, Point_Number) %>%
+  plot_ly(., x = ~Row,y = ~signal_data, type = 'scatter', mode = 'lines',
+  color = ~sheep, line = list(width = 0.5),
+  colors = colors) 
+  
+p
+```
+
+HERE
 
 To do Scatter with all data - is there a relationship with Point numbers or location.
 ```{r}
