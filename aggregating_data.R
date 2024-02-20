@@ -5,13 +5,16 @@ library(xml2) #xml files
 library(plotly)
 library(arrow)
 source("paths.R")
-# "S18", "S20" and "S17" available as sheeps
+
+# run_all("S12") #done "S18" "S20" "S17" "S12"
+
+# The run_all is made up of the following components:
 # run retrieve_all_signals("S17") to aggregate the data for animal S18. Will Save rds file.
 # run incorporate_histology("S17") to merge with histology and create NestedData rds file
 # run write_as_long_format("S17") to save as a csv in long format (for possible python stuff)
 # run write_as_parquet("S17") to save nested data as parquet file
 
-# run_all("S17") #done "S18" "S20"
+
 
 #sheep_name <- "S20"
 #get_paths(sheep_name)

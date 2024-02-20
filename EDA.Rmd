@@ -16,8 +16,7 @@ library(skimr)
 library(plotly)
 library(RColorBrewer)
 source("paths.R")
-sheep_name <- "S18"
-get_paths(sheep_name)
+get_paths()
 
 aggregate_data <- list.files(path = generated_data_path, 
             pattern = "NestedDataS[0-9]+\\.rds", 
@@ -96,7 +95,11 @@ aggregate_data %>% group_by(sheep,Catheter_Type,WaveFront) %>%
 ```
 
 
-Given there is a signal file, the below summarises the categorical labels based on the calculated Categorical_Label of a Scar (count of 1's). What this means is the pool of data that can be fed into machine learning signficantly decreases.
+
+The available data reduces as not all data points have signal info. 
+The proportion of Scar data outweights noScar data.
+
+What this means is the pool of data that can be fed into machine learning signficantly decreases.
 ```{r}
 aggregate_data %>% filter(!is.null(signal)) %>% count(Categorical_Label)
 
@@ -152,7 +155,8 @@ cleaned_aggregate_long_data <- cleaned_aggregate_long_data %>% group_by(sheep,Po
 ```
 
 
-What do the signals look like? Click the Categories to highlight them
+What do the signals look like? 
+Scar versus No Scar
 
 ```{r}
 # Define a color palette
@@ -164,11 +168,30 @@ p <- cleaned_aggregate_long_data %>% select(Categorical_Label,signal_data,Row,sh
   plot_ly(., x = ~Row,y = ~signal_data, type = 'scatter', mode = 'lines',
   color = ~Categorical_Label, colors = colors, line = list(width = 0.5),opacity = 0.8) 
   
-p
+#p
 ```
 
 
+What do the signals look like? 
+WaveFronts
 ```{r}
+colors <- brewer.pal(n = 3, name = "Set3") 
+
+p <- cleaned_aggregate_long_data %>% select(Categorical_Label,signal_data,Row,sheep,WaveFront, Catheter_Type, Point_Number) %>% 
+  group_by(sheep,WaveFront, Catheter_Type, Point_Number) %>%
+  plot_ly(., x = ~Row,y = ~signal_data, type = 'scatter', mode = 'lines',
+  color = ~WaveFront, line = list(width = 0.5),
+  colors = colors) 
+  
+#p
+```
+
+What do the signals look like? 
+Sheep
+
+```{r}
+
+
 colors <- brewer.pal(n = 4, name = "Set3") 
 
 p <- cleaned_aggregate_long_data %>% select(Categorical_Label,signal_data,Row,sheep,WaveFront, Catheter_Type, Point_Number) %>% 
@@ -177,60 +200,24 @@ p <- cleaned_aggregate_long_data %>% select(Categorical_Label,signal_data,Row,sh
   color = ~sheep, line = list(width = 0.5),
   colors = colors) 
   
-p
+#p
 ```
 
-HERE
-
-To do Scatter with all data - is there a relationship with Point numbers or location.
-```{r}
-
-p <- labelled_LongData %>% group_by(WaveFront, Catheter_Type, Point_Number) %>% 
-  plot_ly(., x = ~Point_Number,y = ~signal_data, type = 'scatter', mode = 'markers',
-  color = ~Categorical_Label) 
-
-
-```
-
-RvP has signals of more duration, especially compared to LvP. 
-Possible outlier with a LVP datapoint.
-
+Choose Sheep and WaveFront to drill down to look at Scar v No Scar
 
 ```{r}
+# WaveFronts: "LVp" "RVp" "SR"
+select_sheep <- "S18"
+select_wavefront <- "LVp"
+colors <- brewer.pal(n = 4, name = "Set3") 
 
-
- 
-q <- labelled_LongData %>% group_by(WaveFront, Catheter_Type, Point_Number) %>% 
+p <- cleaned_aggregate_long_data %>% select(Categorical_Label,signal_data,Row,sheep,WaveFront, Catheter_Type, Point_Number) %>% 
+  filter(sheep == select_sheep,WaveFront == select_wavefront) %>% 
+  group_by(sheep,WaveFront, Catheter_Type, Point_Number) %>%
   plot_ly(., x = ~Row,y = ~signal_data, type = 'scatter', mode = 'lines',
-  color = ~WaveFront) 
+  color = ~Categorical_Label, line = list(width = 0.5),
+  colors = colors) 
   
-
-q
-
+#p
 ```
-Relationship between regions in space
-
-```{r}
-spatial_data <- LabelledSignalData %>% mutate(distance = sqrt(X**2 + Y**2 + Z**2)) %>% 
-  select(distance,Histology_Biopsy_Label) %>% 
-  na.omit() %>% filter(Histology_Biopsy_Label != "no scar") %>% 
-  filter(Histology_Biopsy_Label != "no_scar")
-
-spatial_data %>% select(Histology_Biopsy_Label) %>% unique()
-
-```
-to be continued - slow to render...
-
-```{r}
-#g <- labelled_LongData %>%  ggplot(aes(x = Row, y = signal_data, color = Categorical_Label)) +
-#  geom_point() + 
-#  facet_wrap(vars(WaveFront),nrow = 3, ncol = 1)
-
-#ggplotly(g)
-
-
-
-```
-
-
 
