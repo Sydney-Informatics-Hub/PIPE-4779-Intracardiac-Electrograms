@@ -6,7 +6,7 @@ library(plotly)
 library(arrow)
 source("paths.R")
 
-# run_all("S12") #done "S18" "S20" "S17" "S12"
+# run_all("S9") #done "S18" "S20" "S17" "S12"
 
 # The run_all is made up of the following components:
 # run retrieve_all_signals("S17") to aggregate the data for animal S18. Will Save rds file.
@@ -27,8 +27,7 @@ run_all <- function(sheep_name) {
 
 }
 load_sheep <- function(sheep_name) {
-  get_paths(sheep_name)
-
+  get_sheep_path(sheep_name)
   # Aggregating Labelled Data
   LVpLabelledData <- read_excel(here::here(labelled_data_path,"cleaned_LVp Penta_car_labelled.xlsx")) %>%
     mutate(Categorical_Label = ifelse(Categorical_Label == -1,"Scar","NoScar"),

@@ -17,6 +17,9 @@ model_data <- model_data %>% select(unipolar_voltage,bipolar_voltage,LAT, #signa
 model_data <- model_data %>% select(-c(endocardium_scar,intramural_scar,epicardial_scar)) %>%
   mutate(Categorical_Label = as.factor(Categorical_Label))
 
+#For orange exploration
+write_csv(model_data,here::here(generated_data_path,"model_data1.csv"))
+
 # Define your recipe to preprocess the data
 data_recipe <- recipe(Categorical_Label ~ ., data = model_data) %>%
   step_normalize(all_numeric_predictors()) %>%

@@ -8,7 +8,7 @@ output: html_document
 ## Exploration Data Analysis on S18 Sheep
 
 Load libraries and aggregated data
-```{r, results="hide", echo=FALSE}
+```{r echo=FALSE, message=FALSE, warning=FALSE, results="hide"}
 library(here)
 library(tidyverse)
 library(stringr)
@@ -26,7 +26,7 @@ aggregate_data <- list.files(path = generated_data_path,
 ```
 
 Seems to be Scar label where the 3 layers are all zero indicating inconsistency. 
-Affects 3 out of 17 thousand observations. Suspect Scar label to be misleading and Scar will be defined by biopsy layers.
+Affects 5 out of 23 thousand observations. Suspect Scar label to be misleading and Scar will be defined by biopsy layers.
 
 ```{r}
 
@@ -34,7 +34,7 @@ inconsistency <- aggregate_data %>% mutate(AnyScar = sum(endocardium_scar + intr
 ```
 
 
-Note Done: Hence will refer to a Scar based on the biopsy layers
+Hence will refer to a Scar based on the biopsy layers as indication of scar
 ```{r}
 
 aggregate_data <- aggregate_data %>% mutate(AnyScar = sum(endocardium_scar + intramural_scar + epicardial_scar)) %>%
@@ -56,6 +56,7 @@ cleaned_aggregate_data <- aggregate_data %>% filter(!is.null(signal)) %>%
 saveRDS(cleaned_aggregate_data,file = here::here(generated_data_path,"cleaned_aggregate_data.rds"))
 
 cleaned_aggregate_long_data <- cleaned_aggregate_data %>% select(-rawsignal, -From,-To,-Animal) %>% unnest(signal)
+cleaned_aggregate_long_data <- cleaned_aggregate_long_data %>% group_by(sheep,Point_Number,WaveFront, Catheter_Type) %>% mutate(Row = row_number()) %>% ungroup()
 
 saveRDS(cleaned_aggregate_long_data,file = here::here(generated_data_path,"cleaned_aggregate_long_data.rds"))
 
@@ -86,7 +87,7 @@ aggregate_data %>% filter(sheep == "S18") %>%
 High level split of count of observations with and without histology info. Note - The histology data is sometimes blank and a signal is sometimes not present. Generally
 the number of observations that have histology labels (0 or 1) are outnumber by those that dont, particularly with S20.
 
-```{r}
+```{r paged.print=FALSE}
 aggregate_data %>% group_by(sheep,Catheter_Type,WaveFront) %>% 
   summarise(histology_count = sum(!is.na(endocardium_scar)),
             no_histology_count = sum(is.na(endocardium_scar))) %>% 
@@ -96,12 +97,21 @@ aggregate_data %>% group_by(sheep,Catheter_Type,WaveFront) %>%
 
 
 
-The available data reduces as not all data points have signal info. 
-The proportion of Scar data outweights noScar data.
+The available data reduces as not all data points have signal info along 
+with not all points having histology info (blanks in cleaned_histology_all file).
+
+23K of points is reduced to 6.7K. Of these points, 4K have been labelled as Scar
 
 What this means is the pool of data that can be fed into machine learning signficantly decreases.
 ```{r}
 aggregate_data %>% filter(!is.null(signal)) %>% count(Categorical_Label)
+
+```
+
+
+Verify S20 is the control 
+```{r}
+aggregate_data %>% filter(!is.null(signal)) %>% group_by(sheep) %>% count(Categorical_Label)
 
 ```
 
@@ -129,28 +139,28 @@ summary_window_length <- aggregate_data %>%
 summary_window_length %>%
   plot_ly(x = ~length_window, type = "histogram") %>%
   layout(barmode = "overlay", 
-         xaxis = list(title = "Variable to Plot"),
+         xaxis = list(title = "Window of interest lenth"),
          yaxis = list(title = "Frequency"),
-         title = "Histogram by Factor1 and Factor2",
+         title = "Histogram of Distinct Windows of Interest",
          facet_row = ~WaveFront,
          facet_col = ~Categorical_Label)
 ```
 
 Shows distinct windows of interest by sheep.
+
+```{r}
+
+ aggregate_data %>% filter(!is.na(Categorical_Label)) %>% 
+   mutate(length_window = To - From) %>% group_by(sheep) %>% filter(length_window != 0) %>% 
+  summarise(mean_window = mean(length_window,na.rm = T))
+
+```
+
 ```{r}
 
  aggregate_data %>% filter(!is.na(Categorical_Label)) %>% 
    mutate(length_window = To - From) %>% group_by(sheep) %>%  distinct(length_window) %>% 
-  arrange(sheep,length_window)
-
-```
-
-Lets visualise signals and see what influences the scar / no scar category. 
-From here I'm working with the cleaned data (where there is a signal and histology is 0 or 1)
-
-```{r}
-cleaned_aggregate_long_data <- cleaned_aggregate_long_data %>% group_by(sheep,Point_Number,WaveFront, Catheter_Type) %>% mutate(Row = row_number()) %>% ungroup()
-
+  arrange(sheep,length_window) 
 
 ```
 
@@ -203,12 +213,16 @@ p <- cleaned_aggregate_long_data %>% select(Categorical_Label,signal_data,Row,sh
 #p
 ```
 
-Choose Sheep and WaveFront to drill down to look at Scar v No Scar
+To Investigate a particular sheep, Choose Sheep and WaveFront to drill down to look at Scar v No Scar
+S20 SR - No scar seems more eratic 
+S18 SR - The typical profile
+S17 SR - The typical profile**
 
 ```{r}
 # WaveFronts: "LVp" "RVp" "SR"
+# sheep: S18 S12 S17 S20
 select_sheep <- "S18"
-select_wavefront <- "LVp"
+select_wavefront <- "SR"
 colors <- brewer.pal(n = 4, name = "Set3") 
 
 p <- cleaned_aggregate_long_data %>% select(Categorical_Label,signal_data,Row,sheep,WaveFront, Catheter_Type, Point_Number) %>% 
@@ -216,7 +230,11 @@ p <- cleaned_aggregate_long_data %>% select(Categorical_Label,signal_data,Row,sh
   group_by(sheep,WaveFront, Catheter_Type, Point_Number) %>%
   plot_ly(., x = ~Row,y = ~signal_data, type = 'scatter', mode = 'lines',
   color = ~Categorical_Label, line = list(width = 0.5),
-  colors = colors) 
+  colors = colors)  %>% 
+  layout( 
+         xaxis = list(title = "Row"),
+         yaxis = list(title = "signal"),
+         title = paste0(select_sheep," signals"))
   
 #p
 ```
