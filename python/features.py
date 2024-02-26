@@ -143,7 +143,7 @@ class FeatureExtraction:
         else:
             print('No relevant features found')
 
-    def run_single_wavefront_target(self, wavefront, target):
+    def run_wavefront_target(self, wavefront, target):
         self.load_data()
         self.df_to_ts(wavefront, target)
         self.extract_features()
@@ -151,4 +151,13 @@ class FeatureExtraction:
         self.generate_feature_dict()
         self.save_results_to_csv()
         print('Feature extraction and selection done')
+
+    def run_target(self):
+        self.load_data()
+        for wavefront in ['LVp', 'RVp', 'SR']:
+            self.df_to_ts(wavefront, target)
+            self.extract_features()
+            self.select_features()
+            self.generate_feature_dict()
+            self.save_results_to_csv()
 
