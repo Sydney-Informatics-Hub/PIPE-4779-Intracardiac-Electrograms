@@ -36,6 +36,7 @@ class FeatureExtraction:
         self.target = None
         self.wavefront = None
         os.makedirs(self.outpath, exist_ok=True)
+        self.load_data()
 
 
     def load_data(self):
@@ -144,20 +145,16 @@ class FeatureExtraction:
             print('No relevant features found')
 
     def run_wavefront_target(self, wavefront, target):
-        self.load_data()
         self.df_to_ts(wavefront, target)
         self.extract_features()
         self.select_features()
         self.generate_feature_dict()
         self.save_results_to_csv()
-        print('Feature extraction and selection done')
+        print(f'Done for wavefront {wavefront} and target {target}')
 
-    def run_target(self):
-        self.load_data()
+    def run_target(self, target):
+        self.target = target
         for wavefront in ['LVp', 'RVp', 'SR']:
-            self.df_to_ts(wavefront, target)
-            self.extract_features()
-            self.select_features()
-            self.generate_feature_dict()
-            self.save_results_to_csv()
+            print(f"Processing features for wavefront {self.wavefront} and target {self.target}...")
+            self.run_wavefront_target(wavefront, self.target)
 
