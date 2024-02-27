@@ -20,7 +20,12 @@ outpath = '../../../data/features'
 
 class FeatureExtraction:
     """
-    Class for feature extraction and selection
+    Class for feature extraction and selection.
+
+    Args:
+        inpath (str): Path to the input csv file
+        fname_csv (str): Name of the input csv file
+        outpath (str): Path to the output directory
     """
     def __init__(self, inpath, fname_csv, outpath):
         self.inpath = inpath
@@ -145,6 +150,12 @@ class FeatureExtraction:
             print('No relevant features found')
 
     def run_wavefront_target(self, wavefront, target):
+        """ Run the feature extraction and selection for the given wavefront and target
+
+        Args:
+            wavefront (str): 'LVp', 'RVp', or 'SR'
+            target (str): 'scar' (Default) or 'endocardium_scar', 'intramural_scar', 'epicardial_scar'
+        """
         self.df_to_ts(wavefront, target)
         self.extract_features()
         self.select_features()
@@ -153,8 +164,19 @@ class FeatureExtraction:
         print(f'Done for wavefront {wavefront} and target {target}')
 
     def run_target(self, target):
+        """ Run the feature extraction and selection for all wavefronts for the given target
+        
+        Args:
+            target (str): 'scar' (Default) or 'endocardium_scar', 'intramural_scar', 'epicardial_scar'
+        """
         self.target = target
         for wavefront in ['LVp', 'RVp', 'SR']:
             print(f"Processing features for wavefront {self.wavefront} and target {self.target}...")
             self.run_wavefront_target(wavefront, self.target)
+
+    def run(self):
+        """ Run the feature extraction and selection for all targets and wavefronts"""
+        for target in ['scar', 'endocardium_scar', 'intramural_scar', 'epicardial_scar']:
+            print(f"Processing features for target {target}...")
+            self.run_target(target)
 
