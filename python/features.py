@@ -50,6 +50,9 @@ class FeatureExtraction:
             'intramural_scar',
             'epicardial_scar',
         ]
+        # check if file exists
+        if not os.path.isfile(os.path.join(inpath, fname_csv)):
+            raise FileNotFoundError(f'File {fname_csv} not found in {inpath}')
         self.df = pd.read_csv(os.path.join(inpath, fname_csv), usecols=usecols)
         # remove nan values
         self.df = self.df.dropna()
@@ -71,18 +74,15 @@ class FeatureExtraction:
         """
         self.wavefront = wavefront
         self.target = target
-        if self.df:
-            # select 'Point_Number', 'time', 'signal_data'] for the given wavefront\
-            self.timeseries = self.df[self.df['WaveFront'] == wavefront][['Point_Number', 'time', 'signal_data']]
-            self.y = self.df[self.df['WaveFront'] == self.wavefront][['Point_Number', self.target]].drop_duplicates()
-            # set y to  pandas.Series
-            self.y = self.y.set_index('Point_Number')[self.target]
-        else:
-            print('No dataframe found')
+        self.timeseries = self.df[self.df['WaveFront'] == wavefront][['Point_Number', 'time', 'signal_data']]
+        self.y = self.df[self.df['WaveFront'] == self.wavefront][['Point_Number', self.target]].drop_duplicates()
+        # set y to  pandas.Series
+        self.y = self.y.set_index('Point_Number')[self.target]
+
 
     def extract_features(self):
         """ Extract features from the timeseries"""
-        if self.timeseries:
+        if self.timeseries is not None:
             self.extracted_features = extract_features(self.timeseries, column_id="Point_Number", column_sort="time")
             print('Number of extracted features: ', len(list(self.extracted_features.columns)))
         else:
@@ -90,7 +90,7 @@ class FeatureExtraction:
 
     def select_features(self):
         """ Select relevant features from the extracted features and impute missing values."""
-        if self.extracted_features:
+        if self.extracted_features is not None:
             self.impute_features = impute(self.extracted_features)
             self.selected_features = select_features(self.impute_features, self.y)
             print(f'Found {len(self.selected_features.columns)} relevant features')
@@ -100,7 +100,7 @@ class FeatureExtraction:
     def generate_feature_dict(self):
         """ Generate a dictionary with all relevant features and their description"""
         # get all functions of feature_calculators
-        if not self.selected_features:
+        if self.selected_features is None:
             print('No selected features found')
             return None
             
@@ -136,10 +136,10 @@ class FeatureExtraction:
         Save the selected features and relevant features description to csv.
         """
         #self.extracted_features.to_csv(os.path.join(outpath, f'extracted_features_{wavefront}.csv'))
-        if self.selected_features and self.relevant_features_desc:
-            self.selected_features.to_csv(os.path.join(outpath, f'selected_features_{self.target}_{self.wavefront}.csv'))
+        if (self.selected_features is not None) and (self.relevant_features_desc is not None):
+            self.selected_features.to_csv(os.path.join(self.outpath, f'selected_features_{self.target}_{self.wavefront}.csv'))
             relevant_features_desc = pd.DataFrame(self.relevant_features_desc.items(), columns=['feature', 'description'])
-            relevant_features_desc.to_csv(os.path.join(outpath, f'description_relevant_features_{self.target}_{self.wavefront}.csv'), index=False)
+            relevant_features_desc.to_csv(os.path.join(self.outpath, f'description_relevant_features_{self.target}_{self.wavefront}.csv'), index=False)
             print(f"Results for wavefront {self.wavefront} and target {self.target} saved to:", self.outpath)
         else:
             print('No relevant features found')
