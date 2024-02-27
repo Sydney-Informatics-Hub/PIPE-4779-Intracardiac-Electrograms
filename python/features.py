@@ -4,8 +4,8 @@ import os
 import pandas as pd
 import numpy as np
 import logging
-from tsfresh import extract_features
-from tsfresh import select_features
+from tsfresh import extract_features, select_features
+from tsfresh.feature_selection.relevance import calculate_relevance_table
 from tsfresh.feature_extraction import settings
 from tsfresh.utilities.dataframe_functions import impute
 from tsfresh.feature_extraction import feature_calculators
@@ -49,6 +49,7 @@ class FeatureExtraction:
         self.impute_features = None
         self.selected_features = None
         self.relevant_features_desc = None
+        self.relevance_table = None
         self.fc_parameters = None
         self.target = None
         self.wavefront = None
@@ -67,9 +68,9 @@ class FeatureExtraction:
             'epicardial_scar',
         ]
         # check if file exists
-        if not os.path.isfile(os.path.join(inpath, fname_csv)):
-            raise FileNotFoundError(f'File {fname_csv} not found in {inpath}')
-        self.df = pd.read_csv(os.path.join(inpath, fname_csv), usecols=usecols)
+        if not os.path.isfile(os.path.join(self.inpath, self.fname_csv)):
+            raise FileNotFoundError(f'File {self.fname_csv} not found in {self.inpath}')
+        self.df = pd.read_csv(os.path.join(self.inpath, self.fname_csv), usecols=usecols)
         # remove nan values
         self.df = self.df.dropna()
         # add column "time" to df which starts at 0 and has the same length as "signal_data" for each Point_Number and WaveFront
@@ -111,6 +112,16 @@ class FeatureExtraction:
             print(f'Found {len(self.selected_features.columns)} relevant features')
         else:
             print('No extracted features found')
+
+    def calculate_relevance(self):
+        """ Calculate the relevance of the features"""
+        if self.impute_features is not None:
+            self.relevance_table = calculate_relevance_table(self.impute_features, self.y)
+            self.relevance_table = self.relevance_table[self.relevance_table['relevant'] == True]
+        else:
+            print('No imputed features found')
+            return None
+            
 
     def generate_feature_dict(self):
         """ Generate a dictionary with all relevant features and their description"""
@@ -162,6 +173,9 @@ class FeatureExtraction:
         Returns:
             pd.DataFrame: Timeseries dataframe with extracted features
         """
+        if (self.fc_parameters is None) and (self.selected_features is not None):
+            self.get_fc_parameters()
+
         if self.fc_parameters is not None:
             #ts = impute(ts)
             parameters = {
@@ -185,6 +199,8 @@ class FeatureExtraction:
             print(f"Results for wavefront {self.wavefront} and target {self.target} saved to:", self.outpath)
         else:
             print('No relevant features found')
+        if self.relevance_table is not None:
+            self.relevance_table.to_csv(os.path.join(self.outpath, f'relevance_table_{self.target}_{self.wavefront}.csv'))
 
     def run_wavefront_target(self, wavefront, target):
         """ Run the feature extraction and selection for the given wavefront and target
@@ -197,6 +213,7 @@ class FeatureExtraction:
         self.extract_features()
         self.select_relevant_features()
         self.generate_feature_dict()
+        self.calculate_relevance()
         self.save_results_to_csv()
         print(f'Done for wavefront {wavefront} and target {target}')
 
