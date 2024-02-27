@@ -8,97 +8,234 @@ output: html_document
 ## Exploration Data Analysis on S18 Sheep
 
 Load libraries and aggregated data
-```{r, results="hide", echo=FALSE}
+```{r echo=FALSE, message=FALSE, warning=FALSE, results="hide"}
 library(here)
 library(tidyverse)
 library(stringr)
-labelled_data_path <- here::here("data","S18","labelled")
-main_data_path <- here::here("data","S18","Export_Analysis-01_05_2024-17-02-34")
-LabelledSignalData <- readRDS(file = here::here(labelled_data_path,"LabelledSignalData.rds"))
-labelled_LongData <- LabelledSignalData %>% unnest(signal)
+library(skimr)
+library(plotly)
+library(RColorBrewer)
+source("paths.R")
+get_paths()
+
+aggregate_data <- list.files(path = generated_data_path, 
+            pattern = "NestedDataS[0-9]+\\.rds", 
+            full.names = TRUE) %>% map(readRDS) %>% bind_rows()
+
+
 ```
 
-
-Most regions only have 1 or 2 types of measurements, not all 3 ( RVp, LVp, SR).
+Seems to be Scar label where the 3 layers are all zero indicating inconsistency. 
+Affects 5 out of 23 thousand observations. Suspect Scar label to be misleading and Scar will be defined by biopsy layers.
 
 ```{r}
-data <- tibble(files = list.files(path = here::here("data","S18","Export_Analysis-01_05_2024-17-02-34"),
-                                  pattern = "*.xml"))
 
-
-files_and_regions <- data %>% filter(str_detect(files,pattern = "Penta.*Export")) %>% 
-  mutate(region =  str_extract(files, "_P(\\d+)_") %>% gsub("_", "",.), 
-         number = as.numeric(gsub("P","",region))) %>% arrange(number)
-
-number_regions <- files_and_regions %>% distinct(region) %>% count()
-
+inconsistency <- aggregate_data %>% mutate(AnyScar = sum(endocardium_scar + intramural_scar + epicardial_scar)) %>% filter(Categorical_Label == "Scar" & AnyScar == 0) 
 ```
 
 
-Signal length varies. 
+Hence will refer to a Scar based on the biopsy layers as indication of scar
 ```{r}
 
-summary_signals <- labelled_LongData %>% group_by(WaveFront, Catheter_Type, Point_Number) %>%  summarise(n = n()) %>% arrange(n)
-summary_signals
-```
-
-Lets investigate the distribution of signals and see what influences the scar / no scar category.
-
-```
-labelled_LongData <- labelled_LongData %>% group_by(Point_Number,WaveFront, Catheter_Type) %>% mutate(Row = row_number()) %>% ungroup()
-
-
-```
-
-What do the signals look like?
-
-```
-p <- labelled_LongData %>% group_by(WaveFront, Catheter_Type, Point_Number) %>% 
-  plot_ly(., x = ~Row,y = ~signal_data, type = 'scatter', mode = 'lines',
-  color = ~Categorical_Label) 
+aggregate_data <- aggregate_data %>% mutate(AnyScar = sum(endocardium_scar + intramural_scar + epicardial_scar)) %>%
+  mutate(Categorical_Label = case_when(
+    is.na(AnyScar) ~ NA_character_,
+    AnyScar >= 1 ~ "Scar",
+    AnyScar == 0 ~ "NoScar"
+  ))
   
   
-```
-
-To do Scatter with all data - is there a relationship with Point numbers or location.
-```
-
-p <- labelled_LongData %>% group_by(WaveFront, Catheter_Type, Point_Number) %>% 
-  plot_ly(., x = ~Point_Number,y = ~signal_data, type = 'scatter', mode = 'markers',
-  color = ~Categorical_Label) 
-
 
 ```
 
-RvP has signals of more duration, especially compared to LvP. 
-Possible outlier with a LVP datapoint.
+Setting up data for rest of EDA.
+```{r}
+cleaned_aggregate_data <- aggregate_data %>% filter(!is.null(signal)) %>% 
+  filter(!is.na(endocardium_scar))
 
+saveRDS(cleaned_aggregate_data,file = here::here(generated_data_path,"cleaned_aggregate_data.rds"))
+
+cleaned_aggregate_long_data <- cleaned_aggregate_data %>% select(-rawsignal, -From,-To,-Animal) %>% unnest(signal)
+cleaned_aggregate_long_data <- cleaned_aggregate_long_data %>% group_by(sheep,Point_Number,WaveFront, Catheter_Type) %>% mutate(Row = row_number()) %>% ungroup()
+
+saveRDS(cleaned_aggregate_long_data,file = here::here(generated_data_path,"cleaned_aggregate_long_data.rds"))
 
 ```
 
+```{r}
+#Double check generated data is consistent with data dictionary
+
+aggregate_data %>% filter(sheep == "S18") %>% 
+  filter(WaveFront == "SR",Catheter_Type == "Penta", Point_Number == 4815) %>%
+  select(signal) %>%
+  unlist() %>%
+  plot(type = "l")
+
+```
+
+Coincidently, the raw data looks like
+```{r}
+
+aggregate_data %>% filter(sheep == "S18") %>% 
+  filter(WaveFront == "SR",Catheter_Type == "Penta", Point_Number == 4815) %>%
+  select(rawsignal) %>%
+  unlist() %>%
+  plot(type = "l")
+
+```
+
+High level split of count of observations with and without histology info. Note - The histology data is sometimes blank and a signal is sometimes not present. Generally
+the number of observations that have histology labels (0 or 1) are outnumber by those that dont, particularly with S20.
+
+```{r paged.print=FALSE}
+aggregate_data %>% group_by(sheep,Catheter_Type,WaveFront) %>% 
+  summarise(histology_count = sum(!is.na(endocardium_scar)),
+            no_histology_count = sum(is.na(endocardium_scar))) %>% 
+  arrange(sheep,desc(histology_count))
+
+```
+
+
+
+The available data reduces as not all data points have signal info along 
+with not all points having histology info (blanks in cleaned_histology_all file).
+
+23K of points is reduced to 6.7K. Of these points, 4K have been labelled as Scar
+
+What this means is the pool of data that can be fed into machine learning signficantly decreases.
+```{r}
+aggregate_data %>% filter(!is.null(signal)) %>% count(Categorical_Label)
+
+```
+
+
+Verify S20 is the control 
+```{r}
+aggregate_data %>% filter(!is.null(signal)) %>% group_by(sheep) %>% count(Categorical_Label)
+
+```
+
+Same thing but by group
+```{r}
+
+aggregate_data %>% filter(!is.null(signal)) %>% group_by(sheep,Catheter_Type,WaveFront) %>% 
+  count(Categorical_Label)
+
+
+```
 
  
-q <- labelled_LongData %>% group_by(WaveFront, Catheter_Type, Point_Number) %>% 
-  plot_ly(., x = ~Row,y = ~signal_data, type = 'scatter', mode = 'lines',
-  color = ~WaveFront) 
+ 
+ 
+Distribution of signal length assuming there is a signal. Reflects manual calibration 
+of starting point for window of interest.
+```{r}
+
+summary_window_length <- aggregate_data %>% 
+  mutate(length_window = To - From) %>% filter(length_window != 0) %>% 
+  group_by(WaveFront, Categorical_Label) %>% select(length_window) 
   
 
-q
+summary_window_length %>%
+  plot_ly(x = ~length_window, type = "histogram") %>%
+  layout(barmode = "overlay", 
+         xaxis = list(title = "Window of interest lenth"),
+         yaxis = list(title = "Frequency"),
+         title = "Histogram of Distinct Windows of Interest",
+         facet_row = ~WaveFront,
+         facet_col = ~Categorical_Label)
+```
+
+Shows distinct windows of interest by sheep.
+
+```{r}
+
+ aggregate_data %>% filter(!is.na(Categorical_Label)) %>% 
+   mutate(length_window = To - From) %>% group_by(sheep) %>% filter(length_window != 0) %>% 
+  summarise(mean_window = mean(length_window,na.rm = T))
 
 ```
 
-to be continued - slow to render...
+```{r}
 
-```
-g <- labelled_LongData %>%  ggplot(aes(x = Row, y = signal_data, color = Categorical_Label)) +
-  geom_point() + 
-  facet_wrap(vars(WaveFront),nrow = 3, ncol = 1)
-
-ggplotly(g)
-
-
+ aggregate_data %>% filter(!is.na(Categorical_Label)) %>% 
+   mutate(length_window = To - From) %>% group_by(sheep) %>%  distinct(length_window) %>% 
+  arrange(sheep,length_window) 
 
 ```
 
 
+What do the signals look like? 
+Scar versus No Scar
+
+```{r}
+# Define a color palette
+colors <- brewer.pal(n = 2, name = "Set1") 
+
+
+p <- cleaned_aggregate_long_data %>% select(Categorical_Label,signal_data,Row,sheep,WaveFront, Catheter_Type, Point_Number) %>% 
+  group_by(sheep,WaveFront, Catheter_Type, Point_Number) %>%
+  plot_ly(., x = ~Row,y = ~signal_data, type = 'scatter', mode = 'lines',
+  color = ~Categorical_Label, colors = colors, line = list(width = 0.5),opacity = 0.8) 
+  
+#p
+```
+
+
+What do the signals look like? 
+WaveFronts
+```{r}
+colors <- brewer.pal(n = 3, name = "Set3") 
+
+p <- cleaned_aggregate_long_data %>% select(Categorical_Label,signal_data,Row,sheep,WaveFront, Catheter_Type, Point_Number) %>% 
+  group_by(sheep,WaveFront, Catheter_Type, Point_Number) %>%
+  plot_ly(., x = ~Row,y = ~signal_data, type = 'scatter', mode = 'lines',
+  color = ~WaveFront, line = list(width = 0.5),
+  colors = colors) 
+  
+#p
+```
+
+What do the signals look like? 
+Sheep
+
+```{r}
+
+
+colors <- brewer.pal(n = 4, name = "Set3") 
+
+p <- cleaned_aggregate_long_data %>% select(Categorical_Label,signal_data,Row,sheep,WaveFront, Catheter_Type, Point_Number) %>% 
+  group_by(sheep,WaveFront, Catheter_Type, Point_Number) %>%
+  plot_ly(., x = ~Row,y = ~signal_data, type = 'scatter', mode = 'lines',
+  color = ~sheep, line = list(width = 0.5),
+  colors = colors) 
+  
+#p
+```
+
+To Investigate a particular sheep, Choose Sheep and WaveFront to drill down to look at Scar v No Scar
+S20 SR - No scar seems more eratic 
+S18 SR - The typical profile
+S17 SR - The typical profile**
+
+```{r}
+# WaveFronts: "LVp" "RVp" "SR"
+# sheep: S18 S12 S17 S20
+select_sheep <- "S18"
+select_wavefront <- "SR"
+colors <- brewer.pal(n = 4, name = "Set3") 
+
+p <- cleaned_aggregate_long_data %>% select(Categorical_Label,signal_data,Row,sheep,WaveFront, Catheter_Type, Point_Number) %>% 
+  filter(sheep == select_sheep,WaveFront == select_wavefront) %>% 
+  group_by(sheep,WaveFront, Catheter_Type, Point_Number) %>%
+  plot_ly(., x = ~Row,y = ~signal_data, type = 'scatter', mode = 'lines',
+  color = ~Categorical_Label, line = list(width = 0.5),
+  colors = colors)  %>% 
+  layout( 
+         xaxis = list(title = "Row"),
+         yaxis = list(title = "signal"),
+         title = paste0(select_sheep," signals"))
+  
+#p
+```
 
