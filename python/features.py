@@ -6,6 +6,7 @@ import numpy as np
 import logging
 from tsfresh import extract_features
 from tsfresh import select_features
+from tsfresh import feature_extraction
 from tsfresh.utilities.dataframe_functions import impute
 from tsfresh.feature_extraction import feature_calculators
 
@@ -21,6 +22,19 @@ outpath = '../../../data/features'
 class FeatureExtraction:
     """
     Class for feature extraction and selection.
+
+    This class extracts features from a timeseries and selects relevant features based on the tsfresh library.
+
+    The algorithm includes two steps:
+    1) Feature extraction: the algorithm characterizes time series with comprehensive and well-established feature mappings 
+    and considers additional features describing meta-information.
+    2) Feature significance testing: each feature vector is individually and independently evaluated 
+    with respect to its significance for predicting the target under investigation.
+    3) Feature selection: The vector of p-values is evaluated on the basis of the Benjamini-Yekutieli procedure
+    in order to decide which features to keep. 
+
+    Tsfresh deploys the fresh algorithm (fresh stands for FeatuRe Extraction based on Scalable Hypothesis tests).
+    http://adsabs.harvard.edu/abs/2016arXiv161007717C
 
     Args:
         inpath (str): Path to the input csv file
@@ -38,6 +52,7 @@ class FeatureExtraction:
         self.impute_features = None
         self.selected_features = None
         self.relevant_features_desc = None
+        self.fc_parameters = None
         self.target = None
         self.wavefront = None
         os.makedirs(self.outpath, exist_ok=True)
@@ -93,7 +108,7 @@ class FeatureExtraction:
         else:
             print('No timeseries found')
 
-    def select_features(self):
+    def select_relevant_features(self):
         """ Select relevant features from the extracted features and impute missing values."""
         if self.extracted_features is not None:
             self.impute_features = impute(self.extracted_features)
@@ -136,6 +151,13 @@ class FeatureExtraction:
             else:
                 self.relevant_features_desc[feature] = 'No description found'
 
+    def get_fc_parameters(self):
+        """ Get the parameters for the feature calculators"""  
+        if self.selected_features is not None:
+            self.fc_parameters = feature_extraction.settings.from_columns(self.selected_features)
+        else:
+            print('No selected features found')
+
     def save_results_to_csv(self):
         """
         Save the selected features and relevant features description to csv.
@@ -158,7 +180,7 @@ class FeatureExtraction:
         """
         self.df_to_ts(wavefront, target)
         self.extract_features()
-        self.select_features()
+        self.select_relevant_features()
         self.generate_feature_dict()
         self.save_results_to_csv()
         print(f'Done for wavefront {wavefront} and target {target}')
