@@ -6,7 +6,7 @@ import numpy as np
 import logging
 from tsfresh import extract_features
 from tsfresh import select_features
-from tsfresh import feature_extraction
+from tsfresh.feature_extraction import settings
 from tsfresh.utilities.dataframe_functions import impute
 from tsfresh.feature_extraction import feature_calculators
 
@@ -149,9 +149,29 @@ class FeatureExtraction:
     def get_fc_parameters(self):
         """ Get the parameters for the feature calculators"""  
         if self.selected_features is not None:
-            self.fc_parameters = feature_extraction.settings.from_columns(self.selected_features)
+            self.fc_parameters = settings.from_columns(self.selected_features)
         else:
             print('No selected features found')
+
+    def apply_extraction(self, ts):
+        """ Apply feature extraction to the given timeseries
+
+        Args:
+            ts (pd.DataFrame): Timeseries dataframe with columns 'Point_Number', 'time', and 'signal_data'
+
+        Returns:
+            pd.DataFrame: Timeseries dataframe with extracted features
+        """
+        if self.fc_parameters is not None:
+            #ts = impute(ts)
+            parameters = {
+            "signal_data": self.fc_parameters["signal_data"]
+                }
+            features_extracted = extract_features(ts, column_id="Point_Number", column_sort="time", kind_to_fc_parameters=parameters)
+            return features_extracted
+        else:
+            print('No feature calculator parameters found')
+            return None 
 
     def save_results_to_csv(self):
         """
