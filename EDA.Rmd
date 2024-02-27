@@ -48,12 +48,21 @@ aggregate_data <- aggregate_data %>% mutate(AnyScar = sum(endocardium_scar + int
 
 ```
 
-Setting up data for rest of EDA.
+Setting up data for rest of EDA
+building_features.R uses this data
 ```{r}
 cleaned_aggregate_data <- aggregate_data %>% filter(!is.null(signal)) %>% 
   filter(!is.na(endocardium_scar))
 
-saveRDS(cleaned_aggregate_data,file = here::here(generated_data_path,"cleaned_aggregate_data.rds"))
+#
+imputed_aggregate_data <- aggregate_data %>% filter(!is.null(signal)) %>% 
+  mutate(endocardium_scar = ifelse(is.na(endocardium_scar),0,endocardium_scar),
+         intramural_scar = ifelse(is.na(intramural_scar),0,intramural_scar),
+         epicardial_scar = ifelse(is.na(epicardial_scar),0,epicardial_scar))
+
+saveRDS(cleaned_aggregate_data,file = here::here(generated_data_path,"filtered_aggregate_data.rds"))
+
+saveRDS(imputed_aggregate_data,file = here::here(generated_data_path,"imputed_aggregate_data.rds"))
 
 cleaned_aggregate_long_data <- cleaned_aggregate_data %>% select(-rawsignal, -From,-To,-Animal) %>% unnest(signal)
 cleaned_aggregate_long_data <- cleaned_aggregate_long_data %>% group_by(sheep,Point_Number,WaveFront, Catheter_Type) %>% mutate(Row = row_number()) %>% ungroup()

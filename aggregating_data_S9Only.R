@@ -6,14 +6,10 @@ library(plotly)
 library(arrow)
 source("paths.R")
 
-# run_all("S15") #done again "S9" "S17" "S18" "S12" "S20"
-#all  "S9" S18" "S20" "S17" "S12"
+# run_all("S9")
 
-# The run_all is made up of the following components:
-# run retrieve_all_signals("S17") to aggregate the data for animal S18. Will Save rds file.
-# run incorporate_histology("S17") to merge with histology and create NestedData rds file
-# run write_as_long_format("S17") to save as a csv in long format (for possible python stuff)
-# run write_as_parquet("S17") to save nested data as parquet file
+# This file replicates aggregating_data.R but used to handle S9.
+# S9 has inconsistent naming that is arbitrarily manufactured.
 
 
 
@@ -44,7 +40,7 @@ load_sheep <- function(sheep_name) {
   SRLabelledData <- read_excel(here::here(labelled_data_path,"cleaned_SR Penta_car_labelled.xlsx")) %>%
     mutate(Categorical_Label = ifelse(Categorical_Label == -1,"Scar","NoScar"),
            Catheter_Type = "Penta") %>%
-    select(c(-1)) %>% mutate(WaveFront = "SR")
+    select(c(-1)) %>% mutate(WaveFront = "Ap")
 
   LabelledData <- bind_rows(LVpLabelledData,RVpLabelledData,SRLabelledData)
   LabelledData <- LabelledData %>% mutate(sheep = sheep_name)
@@ -54,9 +50,11 @@ load_sheep <- function(sheep_name) {
 }
 
 find_from_woi <- function(WaveFront, Catheter_Type, Point_Number) {
-  file_pattern <- paste0(".*", WaveFront, "\\s", Catheter_Type, "_P", Point_Number, "_Point_Export\\.xml$")
-  matching_file <- list.files(path = main_data_path,
-                              pattern = file_pattern, full.names = TRUE)
+  #changed S9 only
+  #file_pattern <- paste0(".*", WaveFront, "\\s", Catheter_Type, "_P", Point_Number, "_Point_Export\\.xml$")
+  file_pattern <- paste0(".*", Catheter_Type, "\\s", WaveFront, "_P", Point_Number, "_Point_Export\\.xml$")
+  matching_file <- list.files(path = main_data_path,pattern = file_pattern, full.names = TRUE)
+
   #expect one file
   if (length(matching_file) == 1 ) {
     xml_data <- read_xml(matching_file)
@@ -74,7 +72,9 @@ find_from_woi <- function(WaveFront, Catheter_Type, Point_Number) {
 }
 
 find_to_woi <- function(WaveFront, Catheter_Type, Point_Number) {
-  file_pattern <- paste0(".*", WaveFront, "\\s", Catheter_Type, "_P", Point_Number, "_Point_Export\\.xml$")
+  #changed S9 only
+  #file_pattern <- paste0(".*", WaveFront, "\\s", Catheter_Type, "_P", Point_Number, "_Point_Export\\.xml$")
+  file_pattern <- paste0(".*", Catheter_Type, "\\s", WaveFront, "_P", Point_Number, "_Point_Export\\.xml$")
   matching_file <- list.files(path = main_data_path,
                               pattern = file_pattern, full.names = TRUE)
   #expect one file
@@ -99,8 +99,9 @@ find_window <- function(WaveFront, Catheter_Type, Point_Number) {
   # Example: find_window("SR","Penta",4815) and find_window("RVp","Penta",4815) has files and windows of interest
   # find_window("LVp","Penta",4815) does not exist and NULL returned
 
-  file_pattern <- paste0(".*", WaveFront, "\\s", Catheter_Type, "_P", Point_Number, "_Point_Export\\.xml$")
-
+  #this is changed for S9 only
+  #file_pattern <- paste0(".*", WaveFront, "\\s", Catheter_Type, "_P", Point_Number, "_Point_Export\\.xml$")
+  file_pattern <- paste0(".*", Catheter_Type, "\\s", WaveFront, "_P", Point_Number, "_Point_Export\\.xml$")
   matching_file <- list.files(path = main_data_path,
                                pattern = file_pattern, full.names = TRUE)
   #expect one file
@@ -124,8 +125,9 @@ find_window <- function(WaveFront, Catheter_Type, Point_Number) {
 
 find_signal_file <- function(WaveFront, Catheter_Type, Point_Number) {
   #Given you have a woi, get signal information
-  pattern <- sprintf(".*%s %s_P%s_ECG_Export\\.txt$", WaveFront, Catheter_Type, Point_Number)
-
+  #pattern <- sprintf(".*%s %s_P%s_ECG_Export\\.txt$", WaveFront, Catheter_Type, Point_Number)
+  #this is changed for S9 only
+  pattern <- sprintf(".*%s %s_P%s_ECG_Export\\.txt$",  Catheter_Type,WaveFront, Point_Number)
   print(pattern)
   print(main_data_path)
   matching_file <- list.files(path = main_data_path,
@@ -146,6 +148,7 @@ get_signal_data <- function(WaveFront, Catheter_Type, Point_Number) {
     return() #return null - could find signal info
   }
   txt_file <- find_signal_file(WaveFront,Catheter_Type,Point_Number)
+  print(txt_file)
   tabular_content <-  read_table(txt_file, skip = 3)
   raw_ecg_gain <- str_extract(read_lines(txt_file,n_max = 4), "^Raw ECG to MV \\(gain\\) = ([0-9.]+)$") %>%
     parse_number()
@@ -208,6 +211,7 @@ get_raw_signal_data <- function(WaveFront, Catheter_Type, Point_Number) {
 
 
 retrieve_all_signals <- function(sheep_name) {
+  # testing
   LabelledSignalData <- load_sheep(sheep_name)
 
   LabelledSignalData <- LabelledSignalData %>% rowwise() %>%
