@@ -25,16 +25,16 @@ aggregate_data <- list.files(path = generated_data_path,
 
 ```
 
-Seems to be Scar label where the 3 layers are all zero indicating inconsistency. 
-Affects 5 out of 23 thousand observations. Suspect Scar label to be misleading and Scar will be defined by biopsy layers.
-
+Imputed data includes the signals that were grossly assumed to be no scar
+without magnification. 
 ```{r}
-
-inconsistency <- aggregate_data %>% mutate(AnyScar = sum(endocardium_scar + intramural_scar + epicardial_scar)) %>% filter(Categorical_Label == "Scar" & AnyScar == 0) 
+imputed_aggregate_data <- aggregate_data %>% filter(!is.null(signal)) %>% 
+  mutate(endocardium_scar = ifelse(is.na(endocardium_scar),0,endocardium_scar),
+         intramural_scar = ifelse(is.na(intramural_scar),0,intramural_scar),
+         epicardial_scar = ifelse(is.na(epicardial_scar),0,epicardial_scar))
 ```
 
-
-Hence will refer to a Scar based on the biopsy layers as indication of scar
+Will refer to a Scar based on the biopsy layers as indication of scar
 ```{r}
 
 aggregate_data <- aggregate_data %>% mutate(AnyScar = sum(endocardium_scar + intramural_scar + epicardial_scar)) %>%
@@ -44,6 +44,12 @@ aggregate_data <- aggregate_data %>% mutate(AnyScar = sum(endocardium_scar + int
     AnyScar == 0 ~ "NoScar"
   ))
   
+imputed_aggregate_data <- imputed_aggregate_data %>% mutate(AnyScar = sum(endocardium_scar + intramural_scar + epicardial_scar)) %>%
+  mutate(Categorical_Label = case_when(
+    is.na(AnyScar) ~ NA_character_,
+    AnyScar >= 1 ~ "Scar",
+    AnyScar == 0 ~ "NoScar"
+  ))
   
 
 ```
@@ -55,10 +61,6 @@ cleaned_aggregate_data <- aggregate_data %>% filter(!is.null(signal)) %>%
   filter(!is.na(endocardium_scar))
 
 #
-imputed_aggregate_data <- aggregate_data %>% filter(!is.null(signal)) %>% 
-  mutate(endocardium_scar = ifelse(is.na(endocardium_scar),0,endocardium_scar),
-         intramural_scar = ifelse(is.na(intramural_scar),0,intramural_scar),
-         epicardial_scar = ifelse(is.na(epicardial_scar),0,epicardial_scar))
 
 saveRDS(cleaned_aggregate_data,file = here::here(generated_data_path,"filtered_aggregate_data.rds"))
 
