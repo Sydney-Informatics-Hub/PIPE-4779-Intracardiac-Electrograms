@@ -1,6 +1,7 @@
 # Random Forest Classifier
 
 import os
+import numpy as np
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import classification_report
 from sklearn.ensemble import RandomForestClassifier
@@ -25,10 +26,11 @@ y = fe.y
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
 # calculate sample weights to rebalance the classes
-n_0 = y_train.value_counts()[0]
-n_1 = y_train.value_counts()[1]
-n_total = n_0 + n_1
-sample_weight = y_train.map({0: n_total / (2 * n_0), 1: n_total / (2 * n_1)})
+#n_0 = y_train.value_counts()[0]
+#n_1 = y_train.value_counts()[1]
+#n_total = n_0 + n_1
+#sample_weight = y_train.map({0: n_total / (2 * n_0), 1: n_total / (2 * n_1)})
+sample_weight = len(y_train) / (2 * np.bincount(y_train))
 
 # train random forest classifier
 rf = RandomForestClassifier(n_estimators=1000, 
