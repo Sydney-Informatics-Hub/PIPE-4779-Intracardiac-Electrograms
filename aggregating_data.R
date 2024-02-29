@@ -6,15 +6,14 @@ library(plotly)
 library(arrow)
 source("paths.R")
 
-# run_all("S15") #done again "S9" "S17" "S18" "S12" "S20"
-#all  "S9" S18" "S20" "S17" "S12"
+# run_all("S15") #done again "S9" "S17" "S18" "S12" "S20" S15"
+
 
 # The run_all is made up of the following components:
 # run retrieve_all_signals("S17") to aggregate the data for animal S18. Will Save rds file.
 # run incorporate_histology("S17") to merge with histology and create NestedData rds file
 # run write_as_long_format("S17") to save as a csv in long format (for possible python stuff)
 # run write_as_parquet("S17") to save nested data as parquet file
-
 
 
 #sheep_name <- "S20"

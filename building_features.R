@@ -10,7 +10,7 @@ library(circular)
 get_paths()
 
 data_type <- "filtered"
-#data_type <- "imputed"
+data_type <- "imputed"
 
 LabelledSignalData <- readRDS(file = here::here(generated_data_path,paste0(data_type,"_aggregate_data.rds")))
 
