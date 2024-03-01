@@ -18,3 +18,15 @@ Acknowledgments are an important way for us to demonstrate the value we bring to
 If you make use of this software for your research project, please include the following acknowledgment:
 
 “This research was supported by the Sydney Informatics Hub, a Core Research Facility of the University of Sydney."
+
+## Main Software components
+
+1. building_features.R:  aggregates data into a single dataframe given the data structure sheep/labelled (holding the 3 labelled sheets) and sheep/Export_Analysis (holding all other files)
+
+2. EDA.Rmd: Explores data and producing graphs. Importantly also does data prep neccessary for building_features.R (producing 2 rds files imputed_aggregate_data.rds and filtered_aggregate_data.rds)
+
+3. building_features.R Uses above rds files to build features, and prepare data for modelling. Saves model_model_dataimputed.csv and model_datafiltered.csv (Used for orange data mining analysis of models)
+
+4. model.R (to be continued when implementation chosen)
+
+
