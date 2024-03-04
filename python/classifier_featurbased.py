@@ -9,7 +9,7 @@ import os
 import numpy as np
 import pandas as pd
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import accuracy_score, confusion_matrix, classification_report
+from sklearn.metrics import accuracy_score, confusion_matrix, classification_report, roc_auc_score, precision_score
 from sklearn.ensemble import RandomForestClassifier
 import xgboost as xgb
 
@@ -103,6 +103,7 @@ def classify(path,
 
         # Predicting the Test set results
         y_pred = classifier.predict(X_test)
+        y_probs = classifier.predict_proba(X_test)[:,1]
 
     elif method == 'rf':
         print('Training Random Forest classifier...')
@@ -118,23 +119,30 @@ def classify(path,
                                     )
         rf.fit(X_train, y_train)
         y_pred = rf.predict(X_test)
+        y_probs = rf.predict_proba(X_test)[:,1]
     else:
         raise ValueError('Method not supported')
     
     # Evaluate the classifier
     accuracy = accuracy_score(y_test, y_pred)
+    precision = precision_score(y_test, y_pred) 
+    auc = roc_auc_score(y_test, y_probs)
     conf_matrix = confusion_matrix(y_test, y_pred)
     class_report = classification_report(y_test, y_pred, target_names=['no scar', 'scar'])
 
      # save results to txt file
     with open(os.path.join(outpath, f'results_{target}_{method}.txt'), 'w') as f:
         f.write(f"Accuracy: {round(accuracy,4)}\n")
+        f.write(f"Precision: {round(precision,4)}\n")
+        f.write(f"AUC: {round(auc,4)}\n")
         f.write("Confusion Matrix:\n")
         f.write(str(conf_matrix))
         f.write("\nClassification Report:\n")
         f.write(class_report)
 
     print(f"Accuracy: {round(accuracy,4)}")
+    print(f"Precision: {round(precision,4)}")
+    print(f"AUC: {round(auc,4)}")
     print("Confusion Matrix:")
     print(conf_matrix)
     print("Classification Report:")
