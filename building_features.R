@@ -9,8 +9,10 @@ library(circular)
 
 get_paths()
 
+data_type <- "filtered"
+data_type <- "imputed"
 
-LabelledSignalData <- readRDS(file = here::here(generated_data_path,"cleaned_aggregate_data.rds"))
+LabelledSignalData <- readRDS(file = here::here(generated_data_path,paste0(data_type,"_aggregate_data.rds")))
 
 
 mean_positive_values <- function(list_containing_df) {
@@ -63,7 +65,25 @@ LabelledSignalData <- LabelledSignalData %>% rowwise() %>%
 
 #prepare for a model.
 
-saveRDS(LabelledSignalData, file = here::here(generated_data_path,"model_data.rds"))
+#saveRDS(LabelledSignalData, file = here::here(generated_data_path,"model_data.rds"))
 
+model_data <- LabelledSignalData
+
+# Include certain features that should be used for prediction
+model_data <- model_data %>% select(unipolar_voltage,bipolar_voltage,LAT, #signal settings
+                                    Categorical_Label,endocardium_scar,intramural_scar, epicardial_scar, #labels will be excluded later
+                                    mean,standard_deviation,sum,positivesum,positivemean,duration, #aggregate features of signal
+                                    phase_mean,phase_var,magnitude_mean # aggregate features of fft
+)
+
+# Note positional data, sheep info are not be used as features.
+
+# Predicting Scar or NoScar only at this stage and not depth.
+model_data <- model_data %>% select(-c(endocardium_scar,intramural_scar,epicardial_scar)) %>%
+  mutate(Categorical_Label = as.factor(Categorical_Label))
+
+#Saving Model data for Orange exploration
+write_csv(model_data,here::here(generated_data_path,paste0("model_data",data_type,".csv")))
+saveRDS(model_data,file = here::here(generated_data_path,paste0("model_data",data_type,".rds")))
 
 

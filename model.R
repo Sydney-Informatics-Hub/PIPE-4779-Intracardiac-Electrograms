@@ -2,23 +2,10 @@ library(tidyverse)
 library(tidymodels)
 source("paths.R")
 get_paths()
-model_data <- readRDS(file = here::here(generated_data_path,"model_data.rds"))
-
-# Include certain features that should be used for prediction
-model_data <- model_data %>% select(unipolar_voltage,bipolar_voltage,LAT, #signal settings
-                      Categorical_Label,endocardium_scar,intramural_scar, epicardial_scar, #labels will be excluded later
-                      mean,standard_deviation,sum,positivesum,positivemean,duration, #aggregate features of signal
-                      phase_mean,phase_var,magnitude_mean # aggregate features of fft
-                      )
-
-# Note positional data, sheep info are not be used as features.
-
-# Predicting Scar or NoScar only at this stage and not depth.
-model_data <- model_data %>% select(-c(endocardium_scar,intramural_scar,epicardial_scar)) %>%
-  mutate(Categorical_Label = as.factor(Categorical_Label))
-
-#For orange exploration
-write_csv(model_data,here::here(generated_data_path,"model_data1.csv"))
+data_type <- "filtered"
+data_path <- paste0("model_data",data_type,".rds")
+#Havent pursued this path fully yet. Orange Data Mining Used instead for now
+model_data <- readRDS(file = here::here(generated_data_path,data_path))
 
 # Define your recipe to preprocess the data
 data_recipe <- recipe(Categorical_Label ~ ., data = model_data) %>%
@@ -47,9 +34,9 @@ predictions <- predict(trained_model, data_test) %>%
 
 #here!
 # Evaluate model performance
-conf_mat <- conf_mat(predictions, truth = Categorical_Label, estimate = .pred_class)
-accuracy <- accuracy(conf_mat)
+#conf_mat <- conf_mat(predictions, truth = Categorical_Label, estimate = .pred_class)
+#accuracy <- accuracy(conf_mat)
 
 # Print the confusion matrix and accuracy
-print(conf_mat)
-print(accuracy)
+#print(conf_mat)
+#print(accuracy)
