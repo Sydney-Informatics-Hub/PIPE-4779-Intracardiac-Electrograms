@@ -45,6 +45,25 @@ data_features <- data_features %>% left_join(.,labels,by = c("sheep", "Point_Num
 
 saveRDS(data_features,file = here::here(generated_data_path,paste0("ts_features","_",data_type,".rds")))
 
+
+# - Post run
+data_features <- readRDS(file = here::here(generated_data_path,paste0("ts_features","_",data_type,".rds")))
+
+
+#labels reflect how deep removal of scar tissue is likely to be
+# aligns category with the action during procedure.
+data_features <- data_features  %>% mutate(depth_label = case_when(
+  endocardium_scar == 0 & intramural_scar == 0 & epicardial_scar == 0 ~ "NoScar",
+  endocardium_scar == 1 ~ "AtLeastEndo",
+  endocardium_scar == 0 & intramural_scar == 1  ~ "AtLeastIntra",
+  endocardium_scar == 0 & intramural_scar == 0 & epicardial_scar == 1 ~ "epiOnly",
+  TRUE ~ "Otherwise"
+)) %>% select(-signal) %>% select(-c(endocardium_scar,intramural_scar,epicardial_scar))
+
+
+
+write_csv(data_features, file = here::here(generated_data_path,paste0("ts_features","_",data_type,".csv")))
+
 # run time of 14 sec for 10 point observations 1.4 sec per observation
 #execution_time <- system.time({
 #  tsb %>% features(features = tsfresh_features, .var = signal_data)
