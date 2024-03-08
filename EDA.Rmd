@@ -15,6 +15,11 @@ library(stringr)
 library(skimr)
 library(plotly)
 library(RColorBrewer)
+#just for saving plots
+library(reticulate)
+use_python("/Users/kris/miniconda3/bin/python")
+import("kaleido")
+import("plotly")
 source("paths.R")
 get_paths()
 
@@ -23,55 +28,10 @@ aggregate_data <- list.files(path = generated_data_path,
             full.names = TRUE) %>% map(readRDS) %>% bind_rows()
 
 
+cleaned_aggregate_data <- readRDS(file = here::here(generated_data_path,"filtered_aggregate_data.rds"))
+cleaned_aggregate_long_data <- readRDS(file = here::here(generated_data_path,"cleaned_aggregate_long_data.rds"))
 ```
 
-Imputed data includes the signals that were grossly assumed to be no scar
-without magnification. 
-```{r}
-imputed_aggregate_data <- aggregate_data %>% filter(!is.null(signal)) %>% 
-  mutate(endocardium_scar = ifelse(is.na(endocardium_scar),0,endocardium_scar),
-         intramural_scar = ifelse(is.na(intramural_scar),0,intramural_scar),
-         epicardial_scar = ifelse(is.na(epicardial_scar),0,epicardial_scar))
-```
-
-Will refer to a Scar based on the biopsy layers as indication of scar
-```{r}
-
-aggregate_data <- aggregate_data %>% mutate(AnyScar = sum(endocardium_scar + intramural_scar + epicardial_scar)) %>%
-  mutate(Categorical_Label = case_when(
-    is.na(AnyScar) ~ NA_character_,
-    AnyScar >= 1 ~ "Scar",
-    AnyScar == 0 ~ "NoScar"
-  ))
-  
-imputed_aggregate_data <- imputed_aggregate_data %>% mutate(AnyScar = sum(endocardium_scar + intramural_scar + epicardial_scar)) %>%
-  mutate(Categorical_Label = case_when(
-    is.na(AnyScar) ~ NA_character_,
-    AnyScar >= 1 ~ "Scar",
-    AnyScar == 0 ~ "NoScar"
-  ))
-  
-
-```
-
-Setting up data for rest of EDA
-building_features.R uses this data
-```{r}
-cleaned_aggregate_data <- aggregate_data %>% filter(!is.null(signal)) %>% 
-  filter(!is.na(endocardium_scar))
-
-#
-
-saveRDS(cleaned_aggregate_data,file = here::here(generated_data_path,"filtered_aggregate_data.rds"))
-
-saveRDS(imputed_aggregate_data,file = here::here(generated_data_path,"imputed_aggregate_data.rds"))
-
-cleaned_aggregate_long_data <- cleaned_aggregate_data %>% select(-rawsignal, -From,-To,-Animal) %>% unnest(signal)
-cleaned_aggregate_long_data <- cleaned_aggregate_long_data %>% group_by(sheep,Point_Number,WaveFront, Catheter_Type) %>% mutate(Row = row_number()) %>% ungroup()
-
-saveRDS(cleaned_aggregate_long_data,file = here::here(generated_data_path,"cleaned_aggregate_long_data.rds"))
-
-```
 
 ```{r}
 #Double check generated data is consistent with data dictionary
@@ -106,23 +66,38 @@ aggregate_data %>% group_by(sheep,Catheter_Type,WaveFront) %>%
 
 ```
 
+Looking at cleaned data only, some sheep (s20 SR wavelenth) have more imbalanced scar v no scar labels
 
+```{r}
+
+
+cleaned_aggregate_data %>% filter(!is.null(signal)) %>%
+  filter(!is.na(endocardium_scar)) %>% 
+  group_by(sheep,Catheter_Type,WaveFront, Categorical_Label) %>% 
+    summarise(count = n())
+  
+  
+
+
+```
 
 The available data reduces as not all data points have signal info along 
 with not all points having histology info (blanks in cleaned_histology_all file).
 
-23K of points is reduced to 6.7K. Of these points, 4K have been labelled as Scar
+We feed both the filtered (blanks in cleaned_histology_all and no signal) and imputed (blanks are treated as zeros in labells) to the orange data mining analysis.
 
-What this means is the pool of data that can be fed into machine learning signficantly decreases.
+The proportion of Scar and NoScar "roughly" balanced.
+
 ```{r}
 aggregate_data %>% filter(!is.null(signal)) %>% count(Categorical_Label)
 
 ```
 
 
-Verify S20 is the control 
+Notably, even though the S20 sheep is the control subject, it still has a significan portion of scar (2K) versus no-scar (3.6K). See below:
 ```{r}
 aggregate_data %>% filter(!is.null(signal)) %>% group_by(sheep) %>% count(Categorical_Label)
+
 
 ```
 
@@ -166,15 +141,14 @@ Shows distinct windows of interest by sheep.
   summarise(mean_window = mean(length_window,na.rm = T))
 
 ```
-
 ```{r}
-
- aggregate_data %>% filter(!is.na(Categorical_Label)) %>% 
-   mutate(length_window = To - From) %>% group_by(sheep) %>%  distinct(length_window) %>% 
-  arrange(sheep,length_window) 
-
+save_plot <- function(name,p){
+  # Save the plot to a PDF file
+  path <- here::here(file = here::here(generated_data_path,name))
+  save_image(p, file = path)
+  Sys.sleep(5)  # Adjust sleep time as needed
+}
 ```
-
 
 What do the signals look like? 
 Scar versus No Scar
@@ -189,6 +163,7 @@ p <- cleaned_aggregate_long_data %>% select(Categorical_Label,signal_data,Row,sh
   plot_ly(., x = ~Row,y = ~signal_data, type = 'scatter', mode = 'lines',
   color = ~Categorical_Label, colors = colors, line = list(width = 0.5),opacity = 0.8) 
   
+save_plot("scar_v_noscar.pdf",p)
 #p
 ```
 
@@ -204,6 +179,7 @@ p <- cleaned_aggregate_long_data %>% select(Categorical_Label,signal_data,Row,sh
   color = ~WaveFront, line = list(width = 0.5),
   colors = colors) 
   
+save_plot("scar_by_wavefront.pdf",p)
 #p
 ```
 
@@ -224,29 +200,48 @@ p <- cleaned_aggregate_long_data %>% select(Categorical_Label,signal_data,Row,sh
 #p
 ```
 
-To Investigate a particular sheep, Choose Sheep and WaveFront to drill down to look at Scar v No Scar
-S20 SR - No scar seems more eratic 
-S18 SR - The typical profile
-S17 SR - The typical profile**
+Investigation of particular sheep and wavefront.
 
 ```{r}
-# WaveFronts: "LVp" "RVp" "SR"
-# sheep: S18 S12 S17 S20
-select_sheep <- "S18"
-select_wavefront <- "SR"
-colors <- brewer.pal(n = 4, name = "Set3") 
 
-p <- cleaned_aggregate_long_data %>% select(Categorical_Label,signal_data,Row,sheep,WaveFront, Catheter_Type, Point_Number) %>% 
+get_individual_plot <- function(plot_name,select_sheep,select_wavefront ) {
+  colors <- brewer.pal(n = 4, name = "Set1") 
+  p <- cleaned_aggregate_long_data %>% select(Categorical_Label,signal_data,Row,sheep,WaveFront, Catheter_Type, Point_Number) %>% 
   filter(sheep == select_sheep,WaveFront == select_wavefront) %>% 
   group_by(sheep,WaveFront, Catheter_Type, Point_Number) %>%
   plot_ly(., x = ~Row,y = ~signal_data, type = 'scatter', mode = 'lines',
-  color = ~Categorical_Label, line = list(width = 0.5),
+  color = ~Categorical_Label, line = list(width = 0.4),
   colors = colors)  %>% 
   layout( 
          xaxis = list(title = "Row"),
          yaxis = list(title = "signal"),
-         title = paste0(select_sheep," signals"))
+         title = paste0(select_sheep," ",select_wavefront," signals"))
   
+  save_plot(plot_name,p)
+  
+  return(p)
+  
+}
+
+#"S9" "S17" "S18" "S12" "S20" "S15"
+#"SR" ("Ap" for S9) "LVp" "RVp" 
+#look at individual case
+select_sheep <- "S20"
+select_wavefront <- "RVp"
+p <- get_individual_plot(paste0(select_sheep,"_",select_wavefront,".pdf"),select_sheep,select_wavefront )
+
 #p
 ```
 
+# run all
+```{r}
+all_wavefronts <- c("SR","LvP","RvP")
+all_sheep <- c("S9","S17","S18","S12","S20","S15")
+#saves them all as pdf
+for (s in all_sheep) {
+  for (w in all_wavefronts){
+    p <- get_individual_plot(paste0(s,"_",w,".pdf"),s,w )
+    
+  }
+}
+```
