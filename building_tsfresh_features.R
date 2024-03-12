@@ -1,4 +1,5 @@
-
+library(renv)
+renv::init()
 library(reticulate)
 library(tidyverse)
 library(tsibble)
@@ -7,6 +8,8 @@ library(tsibbledata)
 library(reticulate)
 library(tsfeatures)
 library(feasts.tsfresh) # for tsfresh_features
+renv::snapshot() #handle reticlate seperately
+
 use_python("/Users/kris/miniconda3/bin/python")
 import("tsfresh")
 source("paths.R")
@@ -15,7 +18,7 @@ get_paths()
 
 
 data_type <- "filtered"
-#data_type <- "imputed"
+data_type <- "imputed"
 
 LabelledSignalData <- readRDS(file = here::here(generated_data_path,paste0(data_type,"_aggregate_data.rds"))) %>%
   mutate(Point_Number = as.factor(Point_Number))
@@ -45,11 +48,26 @@ data_features <- data_features %>% left_join(.,labels,by = c("sheep", "Point_Num
 
 saveRDS(data_features,file = here::here(generated_data_path,paste0("ts_features","_",data_type,".rds")))
 
-# run time of 14 sec for 10 point observations 1.4 sec per observation
-#execution_time <- system.time({
-#  tsb %>% features(features = tsfresh_features, .var = signal_data)
-#})
 
+# - Post run
+data_features <- readRDS(file = here::here(generated_data_path,paste0("ts_features","_",data_type,".rds")))
+
+
+#labels reflect how deep removal of scar tissue is likely to be
+# aligns category with the action during procedure.
+data_features <- data_features  %>% mutate(depth_label = case_when(
+  endocardium_scar == 0 & intramural_scar == 0 & epicardial_scar == 0 ~ "NoScar",
+  endocardium_scar == 1 ~ "AtLeastEndo",
+  endocardium_scar == 0 & intramural_scar == 1  ~ "AtLeastIntra",
+  endocardium_scar == 0 & intramural_scar == 0 & epicardial_scar == 1 ~ "epiOnly",
+  TRUE ~ "Otherwise"
+)) %>% select(-signal) %>% select(-c(endocardium_scar,intramural_scar,epicardial_scar))
+
+
+
+write_csv(data_features, file = here::here(generated_data_path,paste0("ts_features","_",data_type,".csv")))
+
+# run time of 14 sec for 10 point observations 1.4 sec per observation
 
 # to run again and join assuming works
 

@@ -21,12 +21,14 @@ If you make use of this software for your research project, please include the f
 
 ## Main Software components
 
-1. building_features.R:  aggregates data into a single dataframe given the data structure sheep/labelled (holding the 3 labelled sheets) and sheep/Export_Analysis (holding all other files)
+1. building_features.R:  aggregates data into a single dataframe given the data structure sheep/labelled (holding the 3 labelled sheets) and sheep/Export_Analysis (holding all other files). Enables models in orangedatamining to be run.
 
-2. EDA.Rmd: Explores data and producing graphs. Importantly also does data prep neccessary for building_features.R (producing 2 rds files imputed_aggregate_data.rds and filtered_aggregate_data.rds)
+2. post_aggregation.R: producing 2 rds files imputed_aggregate_data.rds and filtered_aggregate_data.rds used for orange data mining analysis. Produces files neccessary for building_features.R
 
-3. building_features.R Uses above rds files to build features, and prepare data for modelling. Saves model_model_dataimputed.csv and model_datafiltered.csv (Used for orange data mining analysis of models)
+3. EDA.Rmd: Explores data and producing graphs. 
 
-4. model.R (to be continued when implementation chosen)
+4. building_features.R Uses above rds files to build features, and prepare data for modelling. Saves model_model_dataimputed.csv and model_datafiltered.csv (Used for orange data mining analysis of models)
+
+5. model.R (to be continued when implementation chosen)
 
 

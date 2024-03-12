@@ -9,7 +9,7 @@ library(circular)
 
 get_paths()
 
-data_type <- "filtered"
+#data_type <- "filtered"
 data_type <- "imputed"
 
 LabelledSignalData <- readRDS(file = here::here(generated_data_path,paste0(data_type,"_aggregate_data.rds")))
@@ -27,6 +27,51 @@ sum_positive_values <- function(list_containing_df) {
   return(sum(positive_data))
 }
 
+get_mean <- function(list_containing_df) {
+  data <- list_containing_df %>% unlist()
+  result <- mean(data)
+  return(result)
+}
+
+get_std <- function(list_containing_df) {
+  data <- list_containing_df %>% unlist()
+  result <- sd(data,na.rm = T)
+  return(result)
+}
+
+
+
+count_crossings <- function(list_containing_df) {
+# number of times the signal crosses the x axis
+  data <- list_containing_df %>% unlist()
+
+  num_crossings <- 0
+  prev_sign <- sign(data[1])
+  for (i in 2:length(data)) {
+    current_sign <- sign(data[i])
+    if (current_sign != prev_sign) {
+      num_crossings <- num_crossings + 1
+      prev_sign <- current_sign
+    }
+  }
+  return(num_crossings)
+}
+
+count_slope_changes <- function(list_containing_df) {
+  # number of slope changes. i.e. goes from increasing to decreasing
+  data <- list_containing_df %>% unlist()
+  # Calculate the differences between consecutive numbers
+  diffs <- diff(data)
+
+  # Calculate the signs of the differences
+  signs <- sign(diffs)
+
+  # Count the number of times the sign changes
+  num_changes <- sum(signs[-1] != signs[-length(signs)])
+
+  return(num_changes)
+}
+
 # Function to apply Fourier transformation to a numeric vector
 fourier_transform <- function(x) {
   fft_result <- fft(x)
@@ -41,10 +86,11 @@ compute_fourier_transform <- function(vector_data) {
 }
 
 
+
+
 LabelledSignalData <- LabelledSignalData %>% rowwise() %>%
-  mutate(mean = mean(signal %>% unlist(),na.rm = T),
+  mutate(mean = get_mean(signal),
          standard_deviation = sd(signal %>% unlist(),na.rm = T),
-         sum = sum(signal %>% unlist(),na.rm = T),
          positivesum = sum_positive_values(signal),
          positivemean = mean_positive_values(signal),
          duration = length((signal %>% unlist())),
@@ -71,16 +117,21 @@ model_data <- LabelledSignalData
 
 # Include certain features that should be used for prediction
 model_data <- model_data %>% select(unipolar_voltage,bipolar_voltage,LAT, #signal settings
-                                    Categorical_Label,endocardium_scar,intramural_scar, epicardial_scar, #labels will be excluded later
-                                    mean,standard_deviation,sum,positivesum,positivemean,duration, #aggregate features of signal
+                                    endocardium_scar,intramural_scar, epicardial_scar, # to determin labels
+                                    mean,standard_deviation,positivesum,positivemean,duration, #aggregate features of signal
                                     phase_mean,phase_var,magnitude_mean # aggregate features of fft
 )
 
 # Note positional data, sheep info are not be used as features.
 
-# Predicting Scar or NoScar only at this stage and not depth.
-model_data <- model_data %>% select(-c(endocardium_scar,intramural_scar,epicardial_scar)) %>%
-  mutate(Categorical_Label = as.factor(Categorical_Label))
+# Predicting finer scar at layer
+model_data <- model_data  %>% mutate(depth_label = case_when(
+  endocardium_scar == 0 & intramural_scar == 0 & epicardial_scar == 0 ~ "NoScar",
+  endocardium_scar == 1 ~ "AtLeastEndo",
+  endocardium_scar == 0 & intramural_scar == 1  ~ "AtLeastIntra",
+  endocardium_scar == 0 & intramural_scar == 0 & epicardial_scar == 1 ~ "epiOnly",
+  TRUE ~ "Otherwise"
+))  %>% select(-c(endocardium_scar,intramural_scar,epicardial_scar))
 
 #Saving Model data for Orange exploration
 write_csv(model_data,here::here(generated_data_path,paste0("model_data",data_type,".csv")))
