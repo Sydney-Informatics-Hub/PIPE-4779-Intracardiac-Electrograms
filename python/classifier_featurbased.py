@@ -33,6 +33,7 @@ def preprocess():
                 'intramural_scar',
                 'epicardial_scar',
             ]
+    df = None
     for label in animal_labels:
             file = os.path.join(inpath, fname_csv_core + label + '.csv')
             # check if file exists
@@ -44,6 +45,7 @@ def preprocess():
             # modify point number to avoid duplication
             dfnew['Point_Number'] = dfnew['sheep'] + '_' + dfnew['Point_Number'].astype(str)
             # concatenate dataframes
+            # check if 
             if df is None:
                 df = dfnew
             else:
@@ -147,14 +149,18 @@ def classify(path,
     print(conf_matrix)
     print("Classification Report:")
     print(class_report)
+    return (accuracy, precision, auc)
 
 
 def run_all(path='../results', infile_features = 'NestedDataAll_clean.csv'):
     preprocess()
+    results = pd.DataFrame(columns=['target', 'wavefront', 'method', 'accuracy', 'precision', 'auc'])
     for target in ['scar','endocardium_scar','intramural_scar','epicardial_scar']:
         for wavefront in ['SR', 'LVp', 'RVp']:
             for method in ['xgboost', 'rf']:
-                classify(path, infile_features, target, wavefront, method)
+                accuracy, precision, auc = classify(path, infile_features, target, wavefront, method)
+                results = results.append({'target': target, 'wavefront': wavefront, 'method': method, 'accuracy': accuracy, 'precision': precision, 'auc': auc}, ignore_index=True)
+    results.to_csv(os.path.join(path, 'results_stats_all.csv'), index=False)
 
 def combine_txt():
     # combine all txt files into one incl file name
