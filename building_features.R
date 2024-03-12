@@ -96,7 +96,9 @@ LabelledSignalData <- LabelledSignalData %>% rowwise() %>%
          duration = length((signal %>% unlist())),
          positivesumcheck = sapply(signal, function(x) sum(x[x > 0])),
          positivemeancheck = sapply(signal, function(x) mean(x[x > 0])),
-         fourier_features = lapply(signal,compute_fourier_transform))
+         fourier_features = lapply(signal,compute_fourier_transform),
+         count_slope_changes = lapply(signal,count_slope_changes) %>% unlist(),
+         count_crossings = lapply(signal,count_crossings) %>% unlist())
 
 
 #extract circular mean and variance from fourier features to aggregate info into a feature.
@@ -115,11 +117,12 @@ LabelledSignalData <- LabelledSignalData %>% rowwise() %>%
 
 model_data <- LabelledSignalData
 
+#unipolar_voltage,bipolar_voltage,LAT, #signal settings
 # Include certain features that should be used for prediction
-model_data <- model_data %>% select(unipolar_voltage,bipolar_voltage,LAT, #signal settings
-                                    endocardium_scar,intramural_scar, epicardial_scar, # to determin labels
+model_data <- model_data %>% select(endocardium_scar,intramural_scar, epicardial_scar, # to determin labels
                                     mean,standard_deviation,positivesum,positivemean,duration, #aggregate features of signal
-                                    phase_mean,phase_var,magnitude_mean # aggregate features of fft
+                                    phase_mean,phase_var,magnitude_mean, # aggregate features of fft
+                                    count_slope_changes,count_crossings
 )
 
 # Note positional data, sheep info are not be used as features.
