@@ -1,4 +1,4 @@
-
+# Choose data_type
 library(here)
 library(tidyverse)
 library(tidyverse)
@@ -6,11 +6,11 @@ library(tidymodels)
 source("paths.R")
 library(pracma)
 library(circular)
-
 get_paths()
 
-#data_type <- "filtered"
-data_type <- "imputed"
+
+data_type <- "filtered"
+#data_type <- "imputed"
 
 LabelledSignalData <- readRDS(file = here::here(generated_data_path,paste0(data_type,"_aggregate_data.rds")))
 
@@ -117,13 +117,21 @@ LabelledSignalData <- LabelledSignalData %>% rowwise() %>%
 
 model_data <- LabelledSignalData
 
-#unipolar_voltage,bipolar_voltage,LAT, #signal settings
-# Include certain features that should be used for prediction
-model_data <- model_data %>% select(endocardium_scar,intramural_scar, epicardial_scar, # to determin labels
+# doesnt make sense to bring in percentage of healthy numbers for imputed info - will be blank
+if (data_type == "imputed"){
+  model_data <- model_data %>% select(endocardium_scar,intramural_scar, epicardial_scar, # to determin labels
                                     mean,standard_deviation,positivesum,positivemean,duration, #aggregate features of signal
                                     phase_mean,phase_var,magnitude_mean, # aggregate features of fft
-                                    count_slope_changes,count_crossings
-)
+                                    count_slope_changes,count_crossings)
+  } else {
+  model_data <- model_data %>% select(endocardium_scar,intramural_scar, epicardial_scar, # to determin labels
+                                      mean,standard_deviation,positivesum,positivemean,duration, #aggregate features of signal
+                                      phase_mean,phase_var,magnitude_mean, # aggregate features of fft
+                                      count_slope_changes,count_crossings,
+                                      healthy_perc_endo,healthy_perc_intra,healthy_perc_epi)
+          }
+
+
 
 # Note positional data, sheep info are not be used as features.
 
