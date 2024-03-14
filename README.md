@@ -27,9 +27,9 @@ If you make use of this software for your research project, please include the f
 
 3. building_features.R: Builds basic features driven by client conversations. Choose either filtered data or imputed (where blanks in histology labels are treated as NoScar)
 
-4. EDA.Rmd: Explores data and producing graphs. Relatedly save_plots.R save plots to file
+4. building_tsfeatures.R: builds many features according to the tsfresh package.
 
-5. building_features.R Uses above rds files to build features, and prepare data for modelling. Saves model_model_dataimputed.csv and model_datafiltered.csv (Used for orange data mining analysis of models)
+5. EDA.Rmd: Explores data and producing graphs. Relatedly save_plots.R save plots to file
 
 6. model.R (possibly to be continued when implementation chosen)
 

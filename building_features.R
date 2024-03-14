@@ -14,6 +14,15 @@ data_type <- "filtered"
 
 LabelledSignalData <- readRDS(file = here::here(generated_data_path,paste0(data_type,"_aggregate_data.rds")))
 
+# Predicting finer scar at layer
+LabelledSignalData <- LabelledSignalData  %>% mutate(depth_label = case_when(
+  endocardium_scar == 0 & intramural_scar == 0 & epicardial_scar == 0 ~ "NoScar",
+  endocardium_scar == 1 ~ "AtLeastEndo",
+  endocardium_scar == 0 & intramural_scar == 1  ~ "AtLeastIntra",
+  endocardium_scar == 0 & intramural_scar == 0 & epicardial_scar == 1 ~ "epiOnly",
+  TRUE ~ "Otherwise"
+))  %>% select(-c(endocardium_scar,intramural_scar,epicardial_scar))
+
 
 mean_positive_values <- function(list_containing_df) {
   data <- list_containing_df %>% unlist()
@@ -135,14 +144,6 @@ if (data_type == "imputed"){
 
 # Note positional data, sheep info are not be used as features.
 
-# Predicting finer scar at layer
-model_data <- model_data  %>% mutate(depth_label = case_when(
-  endocardium_scar == 0 & intramural_scar == 0 & epicardial_scar == 0 ~ "NoScar",
-  endocardium_scar == 1 ~ "AtLeastEndo",
-  endocardium_scar == 0 & intramural_scar == 1  ~ "AtLeastIntra",
-  endocardium_scar == 0 & intramural_scar == 0 & epicardial_scar == 1 ~ "epiOnly",
-  TRUE ~ "Otherwise"
-))  %>% select(-c(endocardium_scar,intramural_scar,epicardial_scar))
 
 #Saving Model data for Orange exploration
 write_csv(model_data,here::here(generated_data_path,paste0("model_data",data_type,".csv")))
