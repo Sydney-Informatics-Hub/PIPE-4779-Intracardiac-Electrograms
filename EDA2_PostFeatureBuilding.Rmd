@@ -1,0 +1,62 @@
+---
+title: "Discussion on Method of Labelling and Imbalanced Classes"
+author: "Kristian Maras"
+date: "2024-03-15"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(here)
+library(tidyverse)
+source("paths.R")
+get_paths()
+data_type <- "filtered"
+model_data <- readRDS(file = here::here(generated_data_path,paste0("model_data",data_type,".rds")))
+aggregated_data <- readRDS(file = here::here(generated_data_path,paste0(data_type,"_aggregate_data.rds")))
+
+```
+
+
+## Method of Labelling
+
+When calculating the label given the binary combinations available in the Endo, Intra and Epic cardium levels,
+the current approach is to, assuming the Endocardium is the first layer (i.e. most shallow) from the reachable chambers of the heart, is to do an at least categorical label. The approach was selected to both reduce the number of catagories to model, but also to emulate what decisions a cardiologist could be thinking of when conduction catheter ablation (i.e is there a scar, and how deep do I have to go to get it assuming I have to start from the Endocardium level).
+
+To Describe the process:
+
+The "NoScar" is the obvious criteria where all 3 levels are 0. 
+
+The "AtLeastEndo" label is a case there the endocardium scar binary outcome is 1, and ignores what the others are (which could be one or zero).
+
+
+The "AtLeastIntra" label is where the endocardium scar binary outcome must be 1, AND the intramural scar binary outcome is also 1. It ignore what the Epicardial scar is (could be 0 or 1)
+
+Finally, The "epiOnly" label assume all levels are 0 except for the epicardial level.
+
+
+In code form:
+  endocardium_scar == 0 & intramural_scar == 0 & epicardial_scar == 0 ~ "NoScar",
+  endocardium_scar == 1 ~ "AtLeastEndo",
+  endocardium_scar == 0 & intramural_scar == 1  ~ "AtLeastIntra",
+  endocardium_scar == 0 & intramural_scar == 0 & epicardial_scar == 1 ~ "epiOnly",
+
+
+This does produce an outcome of imbalanced labels though as a consequence.
+
+
+```{r}
+model_data %>% group_by(depth_label) %>% summarise(n = n())
+```
+
+
+Looking at the original aggregated data (pre-building features with this labelling), also shows that most cases are either that no scar is present, or there is a scar in the whole cross selection. Hence cases where you are trying to discriminate between at least intra and epi only cases is difficult due to the class imbalanced nature of the data.
+
+
+```{r}
+
+aggregated_data %>% select(endocardium_scar,intramural_scar,epicardial_scar) %>% 
+  group_by(endocardium_scar,intramural_scar,epicardial_scar) %>% 
+  summarise(n = n()) %>% arrange(desc(n))
+  
+
+```

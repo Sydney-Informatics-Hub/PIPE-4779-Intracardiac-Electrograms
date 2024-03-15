@@ -128,12 +128,12 @@ model_data <- LabelledSignalData
 
 # doesnt make sense to bring in percentage of healthy numbers for imputed info - will be blank
 if (data_type == "imputed"){
-  model_data <- model_data %>% select(endocardium_scar,intramural_scar, epicardial_scar, # to determin labels
+  model_data <- model_data %>% select(depth_label, # to determin labels
                                     mean,standard_deviation,positivesum,positivemean,duration, #aggregate features of signal
                                     phase_mean,phase_var,magnitude_mean, # aggregate features of fft
                                     count_slope_changes,count_crossings)
   } else {
-  model_data <- model_data %>% select(endocardium_scar,intramural_scar, epicardial_scar, # to determin labels
+  model_data <- model_data %>% select(depth_label, # to determin labels
                                       mean,standard_deviation,positivesum,positivemean,duration, #aggregate features of signal
                                       phase_mean,phase_var,magnitude_mean, # aggregate features of fft
                                       count_slope_changes,count_crossings,
@@ -150,3 +150,16 @@ write_csv(model_data,here::here(generated_data_path,paste0("model_data",data_typ
 saveRDS(model_data,file = here::here(generated_data_path,paste0("model_data",data_type,".rds")))
 
 
+# For experimenting with 3D chart and plot of predictors v truth
+
+model_data_3d <- LabelledSignalData
+
+model_data_3d <- model_data_3d %>% select(Point_Number, X, Y, Z, sheep, WaveFront,
+                                    depth_label, # to determin labels
+                                    mean,standard_deviation,positivesum,positivemean,duration, #aggregate features of signal
+                                    phase_mean,phase_var,magnitude_mean, # aggregate features of fft
+                                    count_slope_changes,count_crossings,
+                                    healthy_perc_endo,healthy_perc_intra,healthy_perc_epi)
+
+
+write_csv(model_data_3d,here::here(generated_data_path,paste0("model_data_3d",data_type,".csv")))
