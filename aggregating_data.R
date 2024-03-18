@@ -5,8 +5,8 @@ library(xml2) #xml files
 library(plotly)
 library(arrow)
 source("paths.R")
-
-# run_all("S15") #done again "S9" "S17" "S18" "S12" "S20" S15"
+get_paths()
+# run_all("S15") #done again "S9" "S17" "S18" "S12" "S20" "S15"
 
 
 # The run_all is made up of the following components:
@@ -15,6 +15,7 @@ source("paths.R")
 # run write_as_long_format("S17") to save as a csv in long format (for possible python stuff)
 # run write_as_parquet("S17") to save nested data as parquet file
 
+post_introduction_perc_health("S15")
 
 #sheep_name <- "S20"
 #get_paths(sheep_name)
@@ -233,8 +234,9 @@ retrieve_all_signals <- function(sheep_name) {
 
 load_histology <- function() {
   histology_labels <- read_csv(file = here::here("data","cleaned_histology_all.csv")) %>%
-    select(Animal,Specimen_ID,Endo3_anyscar,IM3_anyscar,Epi3_anyscar) %>%
-    rename(Histology_Biopsy_Label = Specimen_ID, endocardium_scar = Endo3_anyscar,intramural_scar = IM3_anyscar, epicardial_scar = Epi3_anyscar) %>%
+    select(Animal,Specimen_ID,Endo3_anyscar,IM3_anyscar,Epi3_anyscar,Endo3__VM, IM3_VM,Epi3_VM) %>%
+    rename(Histology_Biopsy_Label = Specimen_ID, endocardium_scar = Endo3_anyscar,intramural_scar = IM3_anyscar, epicardial_scar = Epi3_anyscar,
+           healthy_perc_endo = Endo3__VM, healthy_perc_intra = IM3_VM,healthy_perc_epi = Epi3_VM) %>%
     na.omit()
   return(histology_labels)
 
@@ -249,6 +251,13 @@ incorporate_histology <- function(sheep_name) {
 
 }
 
+post_introduction_perc_health <- function(sheep_name){
+#post hack to introduce percentage health data - not entire workflow so to avoid signal aggregation
+  incorporate_histology(sheep_name)
+  write_as_long_format(sheep_name)
+  write_as_parquet(sheep_name)
+
+}
 write_as_long_format <- function(sheep_name){
   NestedData <- readRDS(file = here::here(generated_data_path,paste0("NestedData",sheep_name,".rds")))
   LongData <- NestedData %>% unnest(signal)

@@ -1,4 +1,4 @@
-
+# Choose data_type
 library(here)
 library(tidyverse)
 library(tidyverse)
@@ -6,13 +6,22 @@ library(tidymodels)
 source("paths.R")
 library(pracma)
 library(circular)
-
 get_paths()
 
-#data_type <- "filtered"
-data_type <- "imputed"
+
+data_type <- "filtered"
+#data_type <- "imputed"
 
 LabelledSignalData <- readRDS(file = here::here(generated_data_path,paste0(data_type,"_aggregate_data.rds")))
+
+# Predicting finer scar at layer
+LabelledSignalData <- LabelledSignalData  %>% mutate(depth_label = case_when(
+  endocardium_scar == 0 & intramural_scar == 0 & epicardial_scar == 0 ~ "NoScar",
+  endocardium_scar == 1 ~ "AtLeastEndo",
+  endocardium_scar == 0 & intramural_scar == 1  ~ "AtLeastIntra",
+  endocardium_scar == 0 & intramural_scar == 0 & epicardial_scar == 1 ~ "epiOnly",
+  TRUE ~ "Otherwise"
+))  %>% select(-c(endocardium_scar,intramural_scar,epicardial_scar))
 
 
 mean_positive_values <- function(list_containing_df) {
@@ -96,7 +105,9 @@ LabelledSignalData <- LabelledSignalData %>% rowwise() %>%
          duration = length((signal %>% unlist())),
          positivesumcheck = sapply(signal, function(x) sum(x[x > 0])),
          positivemeancheck = sapply(signal, function(x) mean(x[x > 0])),
-         fourier_features = lapply(signal,compute_fourier_transform))
+         fourier_features = lapply(signal,compute_fourier_transform),
+         count_slope_changes = lapply(signal,count_slope_changes) %>% unlist(),
+         count_crossings = lapply(signal,count_crossings) %>% unlist())
 
 
 #extract circular mean and variance from fourier features to aggregate info into a feature.
@@ -115,26 +126,40 @@ LabelledSignalData <- LabelledSignalData %>% rowwise() %>%
 
 model_data <- LabelledSignalData
 
-# Include certain features that should be used for prediction
-model_data <- model_data %>% select(unipolar_voltage,bipolar_voltage,LAT, #signal settings
-                                    endocardium_scar,intramural_scar, epicardial_scar, # to determin labels
+# doesnt make sense to bring in percentage of healthy numbers for imputed info - will be blank
+if (data_type == "imputed"){
+  model_data <- model_data %>% select(depth_label, # to determin labels
                                     mean,standard_deviation,positivesum,positivemean,duration, #aggregate features of signal
-                                    phase_mean,phase_var,magnitude_mean # aggregate features of fft
-)
+                                    phase_mean,phase_var,magnitude_mean, # aggregate features of fft
+                                    count_slope_changes,count_crossings)
+  } else {
+  model_data <- model_data %>% select(depth_label, # to determin labels
+                                      mean,standard_deviation,positivesum,positivemean,duration, #aggregate features of signal
+                                      phase_mean,phase_var,magnitude_mean, # aggregate features of fft
+                                      count_slope_changes,count_crossings,
+                                      healthy_perc_endo,healthy_perc_intra,healthy_perc_epi)
+          }
+
+
 
 # Note positional data, sheep info are not be used as features.
 
-# Predicting finer scar at layer
-model_data <- model_data  %>% mutate(depth_label = case_when(
-  endocardium_scar == 0 & intramural_scar == 0 & epicardial_scar == 0 ~ "NoScar",
-  endocardium_scar == 1 ~ "AtLeastEndo",
-  endocardium_scar == 0 & intramural_scar == 1  ~ "AtLeastIntra",
-  endocardium_scar == 0 & intramural_scar == 0 & epicardial_scar == 1 ~ "epiOnly",
-  TRUE ~ "Otherwise"
-))  %>% select(-c(endocardium_scar,intramural_scar,epicardial_scar))
 
 #Saving Model data for Orange exploration
 write_csv(model_data,here::here(generated_data_path,paste0("model_data",data_type,".csv")))
 saveRDS(model_data,file = here::here(generated_data_path,paste0("model_data",data_type,".rds")))
 
 
+# For experimenting with 3D chart and plot of predictors v truth
+
+model_data_3d <- LabelledSignalData
+
+model_data_3d <- model_data_3d %>% select(Point_Number, X, Y, Z, sheep, WaveFront,
+                                    depth_label, # to determin labels
+                                    mean,standard_deviation,positivesum,positivemean,duration, #aggregate features of signal
+                                    phase_mean,phase_var,magnitude_mean, # aggregate features of fft
+                                    count_slope_changes,count_crossings,
+                                    healthy_perc_endo,healthy_perc_intra,healthy_perc_epi)
+
+
+write_csv(model_data_3d,here::here(generated_data_path,paste0("model_data_3d",data_type,".csv")))
