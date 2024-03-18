@@ -20,7 +20,7 @@ from tsai.basics import (
 from tsai.inference import load_learner
 import sklearn.metrics as skm
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import classification_report
+from sklearn.metrics import accuracy_score, confusion_matrix, classification_report, roc_auc_score, precision_score
 from scipy.signal import resample
 import os
 import numpy as np
@@ -124,6 +124,13 @@ def train_model(X, y):
     # split data
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
     X, y, splits = combine_split_data([X_train, X_test], [y_train, y_test])
+
+    # calculate weights for y
+    weights = len(y_train) / (2 * np.bincount(y_train))
+    sample_weight = np.zeros(len(y))
+    sample_weight[y==0] = weights[0]
+    sample_weight[y==1] = weights[1]
+
     y[y==0] = -1
     
     tfms  = [None, [TSClassification()]]
@@ -137,21 +144,56 @@ def train_model(X, y):
                     batch_tfms=batch_tfms, 
                     #metrics=[accuracy, Precision, Recall],
                     metrics = accuracy,
+                    weights = sample_weight,
                     cbs=ShowGraph()
                     )
-    clf.fit_one_cycle(100, 3e-4)
+    clf.fit_one_cycle(200)#, 3e-4)
 
     # save the model
-    clf.export("clf.pkl")
+    clf.export("clf_balanced.pkl")
     # load the model
     #clf = load_learner("models/clf.pkl")
-    probas, _, preds = clf.get_X_preds(X_test)
-    # convert str array to int array
-    preds = np.array([int(t) for t in preds])
-
-    y_test[y_test==0] = -1
-    print(classification_report(y_test, preds, target_names=['no scar', 'scar'], output_dict=False))
     return clf
+
+def eval_model(clf, X_test, y_test, outpath=None):
+    """
+    Evaluate the trained classifier using the test data.
+    Writes the results to a txt file if outpath is given.
+
+    Args:
+        clf (TSClassifier): The trained classifier
+        X_test (np.array): Array of test signals
+        y_test (np.array): Array of test labels
+        outpath (str): Path to save the results to a txt file
+    
+    """
+    y_probs, _, y_pred = clf.get_X_preds(X_test)
+    y_pred = np.array([int(t) for t in y_pred])
+    accuracy = accuracy_score(y_test, y_pred)
+    precision = precision_score(y_test, y_pred) 
+    auc = roc_auc_score(y_test, y_probs[:,1])
+    conf_matrix = confusion_matrix(y_test, y_pred)
+    class_report = classification_report(y_test, y_pred, target_names=['no scar', 'scar'])
+
+    print(f"Accuracy: {round(accuracy,4)}")
+    print(f"Precision: {round(precision,4)}")
+    print(f"AUC: {round(auc,4)}")
+    print("Confusion Matrix:")
+    print(conf_matrix)
+    print("Classification Report:")
+    print(class_report)
+
+     # save results to txt file
+    if outpath:
+        os.makedirs(outpath, exist_ok=True)
+        with open(os.path.join(outpath, f'results_{target}_{wavefront}.txt'), 'w') as f:
+            f.write(f"Accuracy: {round(accuracy,4)}\n")
+            f.write(f"Precision: {round(precision,4)}\n")
+            f.write(f"AUC: {round(auc,4)}\n")
+            f.write("Confusion Matrix:\n")
+            f.write(str(conf_matrix))
+            f.write("\nClassification Report:\n")
+            f.write(class_report)
 
 def predict(X, clf):
     """
@@ -174,4 +216,5 @@ def main():
     X_orig, y_orig = df_to_ts(df, wavefront=wavefront, target=target)
     # train and evalutae model
     clf = train_model(X_orig, y_orig)
+    eval_model(clf, X_orig, y_orig, outpath='results')
 
