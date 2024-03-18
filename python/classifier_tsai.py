@@ -261,7 +261,8 @@ def run_all(inpath, fname_csv):
             tsai.train_model(X, y, epochs = 100, balance_classes = True)
             path_name = path + f'_{target}_{wavefront}' 
             accuracy, precision, auc = tsai.eval_model(outpath=path_name)
-            results = results.append({'target': target, 'wavefront': wavefront, 'method': method, 'accuracy': accuracy, 'precision': precision, 'auc': auc}, ignore_index=True)
+            new_row = [{'target': target, 'wavefront': wavefront, 'method': method, 'accuracy': accuracy, 'precision': precision, 'auc': auc}]
+            results = pd.concat([results, pd.DataFrame(new_row)], ignore_index=True)
     results.to_csv(os.path.join(path, 'results_stats_all.csv'), index=False)
 
 
