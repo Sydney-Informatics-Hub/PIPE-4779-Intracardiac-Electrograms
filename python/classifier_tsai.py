@@ -126,7 +126,7 @@ class TSai:
             resampled_signals.append(resampled_signal)
         return np.array(resampled_signals)
 
-    def train_model(self, X, y, epochs = 100):
+    def train_model(self, X, y, epochs = 100, balance_classes = True):
         """
         Run the model using the tsai package.
 
@@ -143,6 +143,7 @@ class TSai:
             X (np.array): Array of signals
             y (np.array): Array of labels
             epochs (int): Number of epochs to train the model (Default: 100)
+            balance_classes (bool): Whether to balance the classes (Default: True)
         
         Returns:
             TSClassifier: The trained classifier
@@ -154,10 +155,13 @@ class TSai:
         self.X, self.y, self.splits = combine_split_data([self.X_train, self.X_test], [self.y_train, self.y_test])
 
         # calculate weights for y
-        weights = len(self.y_train) / (2 * np.bincount(self.y_train))
-        self.sample_weight = np.zeros(len(y))
-        self.sample_weight[y==0] = weights[0]
-        self.sample_weight[y==1] = weights[1]
+        if balance_classes:
+            weights = len(self.y_train) / (2 * np.bincount(self.y_train))
+            self.sample_weight = np.zeros(len(y))
+            self.sample_weight[y==0] = weights[0]
+            self.sample_weight[y==1] = weights[1]
+        else:
+            self.sample_weight = None
 
         self.y[self.y==0] = -1
         
@@ -243,5 +247,5 @@ def test_tsai(wavefront, target, inpath, fname_csv):
     tsai = TSai(inpath, fname_csv)
     df = tsai.load_data(inpath, fname_csv)
     X, y = tsai.df_to_ts(df, wavefront, target)
-    tsai.train_model(X, y)
+    tsai.train_model(X, y, epochs = 200, balance_classes = False)
     tsai.eval_model(outpath='../results/tsai')
