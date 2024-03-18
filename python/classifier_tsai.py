@@ -26,11 +26,13 @@ import os
 import numpy as np
 import pandas as pd
 
-inpath = '../../../data/generated'
-fname_csv = 'NestedDataS18.csv'
+inpath = '../results'
+fname_csv = 'NestedDataAll_clean.csv'
 
 wavefront = 'SR'
 target = 'scar'
+
+
 
 class TSai:
     """
@@ -94,11 +96,12 @@ class TSai:
         y = dfsel[['Point_Number', target]].drop_duplicates()
         # get length of signal_data for each point
         signal_length = dfsel.groupby('Point_Number')['signal_data'].apply(len)
-        X = np.zeros((len(y), signal_length.max()))
-        for i in range(len(y)):
-            point = y.iloc[i]['Point_Number']
-            # get signal_data
-            data = dfsel[dfsel['Point_Number'] == point]['signal_data']
+        signal_length_max = signal_length.max()
+        X = np.zeros((len(y), signal_length_max))
+        #aggregate 'signal_data' directly 
+        aggregated_data = dfsel.groupby('Point_Number')['signal_data'].agg(list)
+        for i, point in enumerate(y['Point_Number']):
+            data = np.array(aggregated_data[point])
             X[i, :len(data)] = data
 
         return X.reshape((len(y), 1, -1)), y[target].values
