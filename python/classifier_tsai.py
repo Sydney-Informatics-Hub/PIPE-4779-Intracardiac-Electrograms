@@ -12,6 +12,9 @@ from tsai.basics import (
     combine_split_data,
     TSClassifier,
     accuracy,
+    F1Score,
+    Recall,
+    Precision,
     ShowGraph
 )
 from tsai.inference import load_learner
@@ -97,45 +100,85 @@ def resample_signals(signals, sample_length):
         resampled_signals.append(resampled_signal)
     return np.array(resampled_signals)
 
+def train_model(X, y):
+    """
+    Run the model using the tsai package.
+
+    Pipeline:
+    - Split data
+    - Standardize data
+    - Build model
+    - Train model
+    - Save model
+    - Evaluate model
+    - Print classification report
+
+    Args:
+        X (np.array): Array of signals
+        y (np.array): Array of labels
+    
+    Returns:
+        TSClassifier: The trained classifier
+    """
+
+    # split data
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y_orig)
+    X, y, splits = combine_split_data([X_train, X_test], [y_train, y_test])
+    y[y==0] = -1
+    
+    tfms  = [None, [TSClassification()]]
+    batch_tfms = TSStandardize()
+    # see https://timeseriesai.github.io/tsai/tslearner.html
+    clf = TSClassifier(X, y, 
+                    splits=splits, 
+                    path='models', 
+                    arch="InceptionTimePlus", 
+                    tfms=tfms, 
+                    batch_tfms=batch_tfms, 
+                    #metrics=[accuracy, Precision, Recall],
+                    metrics = accuracy,
+                    cbs=ShowGraph()
+                    )
+    clf.fit_one_cycle(100, 3e-4)
+
+    # save the model
+    clf.export("clf.pkl")
+    # load the model
+    #clf = load_learner("models/clf.pkl")
+    probas, _, preds = clf.get_X_preds(X_test)
+    # convert str array to int array
+    preds = np.array([int(t) for t in preds])
+
+    y_test[y_test==0] = -1
+    print(classification_report(y_test, preds, target_names=['no scar', 'scar'], output_dict=False))
+    return clf
+
+def predict(X, clf):
+    """
+    Predict the labels for the given signals using the trained classifier.
+
+    Args:
+        X (np.array): Array of signals
+        clf (TSClassifier): The trained classifier
+    
+    Returns:
+        np.array: Array of predicted labels
+    """
+    probas, _, preds = clf.get_X_preds(X)
+    return preds, probas
 
 
-# load data
-df = load_data(inpath, fname_csv)
-X, y = df_to_ts(df, wavefront=wavefront, target=target)
-X_orig = X.copy()
-y_orig = y.copy()
+def main():
+    # load data
+    df = load_data(inpath, fname_csv)
+    X_orig, y_orig = df_to_ts(df, wavefront=wavefront, target=target)
+    # train and evalutae model
+    clf = train_model(X, y_orig)
+    # predict
+    #preds, probas = predict(X, clf)
+    #print(preds)
+    #print(probas)
 
-
-# split data
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
-X, y, splits = combine_split_data([X_train, X_test], [y_train, y_test])
-X.shape, y.shape, splits
- 
-tfms  = [None, [TSClassification()]]
-batch_tfms = TSStandardize()
-clf = TSClassifier(X, y, splits=splits, path='models', arch="InceptionTimePlus", tfms=tfms, batch_tfms=batch_tfms, metrics=accuracy, cbs=ShowGraph())
-clf.fit_one_cycle(100, 3e-4)
-
-# save the model
-clf.export("clf.pkl")
-# load the model
-#clf = load_learner("models/clf.pkl")
-
-# inference
-#probas, target, preds = clf.get_X_preds(X[splits[1]], y[splits[1]])
-probas, _, preds = clf.get_X_preds(X_test)
-
-# convert int array to str preds
-#target = np.array([str(t) for t in y_test])
-# convert str array to int array
-preds = np.array([int(t) for t in preds])
-
-print(classification_report(y_test, preds, target_names=['no scar', 'scar'], output_dict=False))
-
-# convert str preds to int array
-#preds = np.array([int(pred) for pred in preds])
-
-# build dataloader to created batches of data
 
 """
 dls = TSDataLoaders.from_dsets(dsets.train, dsets.valid, bs=[64, 128], batch_tfms=[TSStandardize()], num_workers=0)
