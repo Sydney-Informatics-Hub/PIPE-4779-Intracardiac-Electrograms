@@ -77,16 +77,25 @@ def df_to_ts(df, wavefront, target='scar'):
 
     return X.reshape((len(y), 1, -1)), y[target].values
 
-def resample_data(signal, sample_length):
+def resample_signals(signals, sample_length):
     """
-    Resample the signal to a given sample length
+    Resample the signals to a given sample length using Fourier method.
+
+    Args:
+        signals (np.array): Array of signals
+        sample_length (int): Length of the resampled signal
+
+    Returns:
+        np.array: Array of resampled signals    
     """
     resampled_signals = []
-    for si in signal:
-		resampled_signal.append(resample(si, sample_length))
-    resampled_signal = np.array(resampled_signal)
-    #resampled_signals.append(resampled_signal)
-    return resampled_signal
+    for signal in signals:
+        resampled_signal = []
+        for si in signal:
+            resampled_signal.append(resample(si, sample_length))
+        resampled_signal = np.array(resampled_signal)
+        resampled_signals.append(resampled_signal)
+    return np.array(resampled_signals)
 
 
 
