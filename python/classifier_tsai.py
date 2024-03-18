@@ -1,15 +1,32 @@
 # Train and test unsupervised classifier using tsai package
+# use conda environment tsai (Python 3.10)
 
 
-from tsai.all import Categorize, TSDatasets, InceptionTime, Learner, accuracy, TSStandardize, ClassificationInterpretation
+from tsai.basics import (
+    Categorize, 
+    TSDatasets, 
+    Learner, accuracy, 
+    TSStandardize, 
+    TSClassification,
+    ClassificationInterpretation,
+    combine_split_data,
+    TSClassifier,
+    accuracy,
+    ShowGraph
+)
+from tsai.inference import load_learner
 import sklearn.metrics as skm
 from sklearn.model_selection import train_test_split
+from sklearn.metrics import classification_report
 import os
 import numpy as np
 import pandas as pd
 
 inpath = '../../../data/generated'
 fname_csv = 'NestedDataS18.csv'
+
+wavefront = 'SR'
+target = 'scar'
 
 def load_data(inpath, fname_csv):
     usecols = [
@@ -34,10 +51,11 @@ def load_data(inpath, fname_csv):
     df['intramural_scar'] = df['intramural_scar'].astype(int)
     df['epicardial_scar'] =df['epicardial_scar'].astype(int)
     df['scar'] = df[['endocardium_scar', 'intramural_scar', 'epicardial_scar']].max(axis=1)
+    return df
 
 def df_to_ts(df, wavefront, target='scar'):
     """
-    Converts the dataframe to a timeseries for the given wavefront
+    Converts the dataframe to tsai format for a given wavefront and target tissue
 
     Args:
         wavefront (str): 'LVp', 'RVp', or 'SR'
@@ -59,19 +77,39 @@ def df_to_ts(df, wavefront, target='scar'):
     return X.reshape((len(y), 1, -1)), y[target].values
 
 # load data
-df = pd.read_csv(os.path.join(inpath, fname))
-
-wavefront = 'SR'
-target = 'scar'
+df = load_data(inpath, fname_csv)
+X, y = df_to_ts(df, wavefront=wavefront, target=target)
+X_orig = X.copy()
+y_orig = y.copy()
 
 
 # split data
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
+X, y, splits = combine_split_data([X_train, X_test], [y_train, y_test])
+X.shape, y.shape, splits
+ 
 
-tfms  = [None, [Categorize()]]
-dsets = TSDatasets(X_train, y_train, tfms=tfms, splits=splits, inplace=True)
+
+#dsets = TSDatasets(X_train, y_train) 
+tfms  = [None, [TSClassification()]]
+batch_tfms = TSStandardize()
+clf = TSClassifier(X, y, splits=splits, path='models', arch="InceptionTimePlus", tfms=tfms, batch_tfms=batch_tfms, metrics=accuracy, cbs=ShowGraph())
+clf.fit_one_cycle(100, 3e-4)
+# save the model
+clf.export("clf.pkl")
+# load the model
+#clf = load_learner("models/clf.pkl")
+
+# inference
+#probas, target, preds = clf.get_X_preds(X[splits[1]], y[splits[1]])
+probas, target, preds = clf.get_X_preds(X_test)
+
+# convert str preds to int array
+#preds = np.array([int(pred) for pred in preds])
 
 # build dataloader to created batches of data
+
+"""
 dls = TSDataLoaders.from_dsets(dsets.train, dsets.valid, bs=[64, 128], batch_tfms=[TSStandardize()], num_workers=0)
 
 # build learner
@@ -103,3 +141,4 @@ interp.plot_confusion_matrix()
 # test
 test_ds = valid_dl.dataset.add_test(X_test, y_test)# In this case I'll use X and y, but this would be your test data
 test_dl = valid_dl.new(test_ds)
+"""
