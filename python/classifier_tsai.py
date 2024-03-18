@@ -122,7 +122,7 @@ def train_model(X, y):
     """
 
     # split data
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y_orig)
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
     X, y, splits = combine_split_data([X_train, X_test], [y_train, y_test])
     y[y==0] = -1
     
@@ -173,43 +173,5 @@ def main():
     df = load_data(inpath, fname_csv)
     X_orig, y_orig = df_to_ts(df, wavefront=wavefront, target=target)
     # train and evalutae model
-    clf = train_model(X, y_orig)
-    # predict
-    #preds, probas = predict(X, clf)
-    #print(preds)
-    #print(probas)
+    clf = train_model(X_orig, y_orig)
 
-
-"""
-dls = TSDataLoaders.from_dsets(dsets.train, dsets.valid, bs=[64, 128], batch_tfms=[TSStandardize()], num_workers=0)
-
-# build learner
-model = InceptionTime(dls.vars, dls.c)
-learn = Learner(dls, model, metrics=accuracy)
-learn.save('stage0')
-
-learn.load('stage0')
-learn.lr_find()
-
-learn.fit_one_cycle(25, lr_max=1e-3)
-learn.save('stage1')
-
-learn.recorder.plot_metrics()
-
-learn.save_all(path='export', dls_fname='dls', model_fname='model', learner_fname='learner')
-#learn = load_learner_all(path='export', dls_fname='dls', model_fname='model', learner_fname='learner')
-
-valid_probas, valid_targets, valid_preds = learn.get_preds(dl=valid_dl, with_decoded=True)
-
-learn.show_results()
-
-learn.show_probas()
-
-interp = ClassificationInterpretation.from_learner(learn)
-interp.plot_confusion_matrix()
-
-
-# test
-test_ds = valid_dl.dataset.add_test(X_test, y_test)# In this case I'll use X and y, but this would be your test data
-test_dl = valid_dl.new(test_ds)
-"""
