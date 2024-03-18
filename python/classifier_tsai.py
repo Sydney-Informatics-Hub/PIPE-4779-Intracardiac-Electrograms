@@ -182,7 +182,8 @@ class TSai:
         self.clf.fit_one_cycle(epochs)#, 3e-4)
 
         # save the model
-        self.clf.export("clf_balanced.pkl")
+        outname = f"clf_{target}_{wavefront}_{epochs}epochs.pkl"
+        self.clf.export(outname)
         # load the model
         #clf = load_learner("models/clf.pkl")
 
@@ -193,6 +194,9 @@ class TSai:
 
         Args:
             outpath (str): Path to save the results to a txt file
+
+        Returns:
+            tuple: Tuple of accuracy, precision, and AUC
         
         """
         y_probs, _, y_pred = self.clf.get_X_preds(self.X_test)
@@ -223,6 +227,7 @@ class TSai:
                 f.write(str(conf_matrix))
                 f.write("\nClassification Report:\n")
                 f.write(class_report)
+        return (accuracy, precision, auc)
 
     def predict(self, X, reload_model_from_path=None):
         """
@@ -241,11 +246,29 @@ class TSai:
             self.clf = load_learner(path_model)
         probas, _, preds = self.clf.get_X_preds(X)
         return preds, probas
+    
+    
+
+def run_all(inpath, fname_csv):
+    tsai = TSai(inpath, fname_csv)
+    df = tsai.load_data(inpath, fname_csv)
+    results = pd.DataFrame(columns=['target', 'wavefront', 'method', 'accuracy', 'precision', 'auc'])
+    method = 'CNN'
+    path = '../results/tsai'
+    for target in ['scar','endocardium_scar','intramural_scar','epicardial_scar']:
+        for wavefront in ['SR', 'LVp', 'RVp']:
+            X, y = tsai.df_to_ts(df, wavefront, target)
+            tsai.train_model(X, y, epochs = 100, balance_classes = True)
+            path_name = path + f'_{target}_{wavefront}' 
+            accuracy, precision, auc = tsai.eval_model(outpath=path_name)
+            results = results.append({'target': target, 'wavefront': wavefront, 'method': method, 'accuracy': accuracy, 'precision': precision, 'auc': auc}, ignore_index=True)
+    results.to_csv(os.path.join(path, 'results_stats_all.csv'), index=False)
 
 
 def test_tsai(wavefront, target, inpath, fname_csv):
     tsai = TSai(inpath, fname_csv)
     df = tsai.load_data(inpath, fname_csv)
     X, y = tsai.df_to_ts(df, wavefront, target)
-    tsai.train_model(X, y, epochs = 200, balance_classes = False)
-    tsai.eval_model(outpath='../results/tsai')
+    tsai.train_model(X, y, epochs = 100, balance_classes = True)
+    path_name = '../results/tsai' + f'_{target}_{wavefront}' 
+    accuracy, precision, auc = tsai.eval_model(outpath=path_name)
