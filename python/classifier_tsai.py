@@ -18,6 +18,7 @@ from tsai.inference import load_learner
 import sklearn.metrics as skm
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import classification_report
+from scipy.signal import resample
 import os
 import numpy as np
 import pandas as pd
@@ -76,6 +77,19 @@ def df_to_ts(df, wavefront, target='scar'):
 
     return X.reshape((len(y), 1, -1)), y[target].values
 
+def resample_data(signal, sample_length):
+    """
+    Resample the signal to a given sample length
+    """
+    resampled_signals = []
+    for si in signal:
+		resampled_signal.append(resample(si, sample_length))
+    resampled_signal = np.array(resampled_signal)
+    #resampled_signals.append(resampled_signal)
+    return resampled_signal
+
+
+
 # load data
 df = load_data(inpath, fname_csv)
 X, y = df_to_ts(df, wavefront=wavefront, target=target)
@@ -88,13 +102,11 @@ X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_
 X, y, splits = combine_split_data([X_train, X_test], [y_train, y_test])
 X.shape, y.shape, splits
  
-
-
-#dsets = TSDatasets(X_train, y_train) 
 tfms  = [None, [TSClassification()]]
 batch_tfms = TSStandardize()
 clf = TSClassifier(X, y, splits=splits, path='models', arch="InceptionTimePlus", tfms=tfms, batch_tfms=batch_tfms, metrics=accuracy, cbs=ShowGraph())
 clf.fit_one_cycle(100, 3e-4)
+
 # save the model
 clf.export("clf.pkl")
 # load the model
@@ -102,7 +114,14 @@ clf.export("clf.pkl")
 
 # inference
 #probas, target, preds = clf.get_X_preds(X[splits[1]], y[splits[1]])
-probas, target, preds = clf.get_X_preds(X_test)
+probas, _, preds = clf.get_X_preds(X_test)
+
+# convert int array to str preds
+#target = np.array([str(t) for t in y_test])
+# convert str array to int array
+preds = np.array([int(t) for t in preds])
+
+print(classification_report(y_test, preds, target_names=['no scar', 'scar'], output_dict=False))
 
 # convert str preds to int array
 #preds = np.array([int(pred) for pred in preds])
