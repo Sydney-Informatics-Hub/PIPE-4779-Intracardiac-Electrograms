@@ -1,4 +1,4 @@
-# Train and test unsupervised classifier using tsai package
+# Class for traininig and evaluation of unsupervised classifier using tsai package
 # use conda environment tsai (Python 3.10)
 
 
@@ -33,6 +33,22 @@ wavefront = 'SR'
 target = 'scar'
 
 class TSai:
+    """
+    Class to train and evaluate a classifier using the tsai package.
+
+    This class allows to load the data, convert it to the tsai format, train the model, and evaluate the model.
+
+    Args:
+        inpath (str): Path to the input data
+        fname_csv (str): Filename of the csv file containing the data
+
+    Example:
+        tsai = TSai(inpath, fname_csv)
+        df = tsai.load_data(inpath, fname_csv)
+        X, y = tsai.df_to_ts(df, wavefront, target)
+        tsai.train_model(X, y)
+        tsai.eval_model()
+    """
 
     def __init__(self, inpath, fname_csv):
         self.inpath = inpath
@@ -130,7 +146,8 @@ class TSai:
         """
 
         # split data
-        self.X_train, self.X_test, self.y_train, self.y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
+        self.X_train, self.X_test, self.y_train, self.y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+        #self.X_train, self.X_test, self.y_train, self.y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
         self.X, self.y, self.splits = combine_split_data([self.X_train, self.X_test], [self.y_train, self.y_test])
 
         # calculate weights for y
@@ -225,6 +242,3 @@ def test_tsai(wavefront, target, inpath, fname_csv):
     X, y = tsai.df_to_ts(df, wavefront, target)
     tsai.train_model(X, y)
     tsai.eval_model(outpath='../results/tsai')
-
-
-
