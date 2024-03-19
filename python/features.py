@@ -1,4 +1,38 @@
-# Feature extraction and selection
+"""
+Feature extraction and selection for ECG data using the tsfresh library.
+
+Functionality:
+--------------
+- Load data from a csv file
+- Convert the dataframe to tsfresh timeseries format for a given wavefront and target
+- Extract features from a timeseries using the tsfresh library
+- Select relevant features based on the tsfresh library
+- Calculate the relevance of the features
+- Generate a dictionary with all relevant features and their description
+- Get the parameters for the feature calculators
+- Apply feature extraction to a given timeseries
+
+Example how to use:
+-------------------
+    target = 'scar'
+    wavefront = 'SR'
+    outpath = 'test'
+    inpath = '../../../data/generated'
+    fname_csv = 'NestedDataS18.csv'
+    fe = FeatureExtraction(inpath, fname_csv, outpath)
+    fe.run_wavefront_target(wavefront, target)
+
+    # or for all targets and wavefronts:
+    fe.run()
+
+The relevant features can then be used as input for classification models such as Random Forest.
+
+See for tests and examples: test_features.py
+
+Installation and dependencies: environment.yaml
+
+Author: Sebastian Haan
+"""
 
 import os
 import pandas as pd
@@ -93,7 +127,6 @@ class FeatureExtraction:
         self.target = target
         self.timeseries = self.df[self.df['WaveFront'] == wavefront][['Point_Number', 'time', 'signal_data']]
         self.y = self.df[self.df['WaveFront'] == self.wavefront][['Point_Number', self.target]].drop_duplicates()
-        # set y to  pandas.Series
         self.y = self.y.set_index('Point_Number')[self.target]
 
     def extract_features(self):
