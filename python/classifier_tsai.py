@@ -1,5 +1,32 @@
-# Class for traininig and evaluation of unsupervised classifier using tsai package
-# use conda environment tsai (Python 3.10)
+""" Software for training and evaluation of CNN models for ECG Time Series Classification (TSC).
+
+This classifier uses InceptionTime, which is an ensemble of five deep Convolutional Neural Network (CNN) models for TSC.
+The implmentation leverages the python package tsai: https://timeseriesai.github.io/tsai
+
+References: 
+Fawaz, H. I., Lucas, B., Forestier, G., Pelletier, C., Schmidt, D. F., Weber, J., … & Petitjean, F. (2020). 
+Inceptiontime: Finding alexnet for time series classification. Data Mining and Knowledge Discovery, 34(6), 1936-1962.
+Official InceptionTime tensorflow implementation: https://github.com/hfawaz/InceptionTime
+
+Functionality:
+    - load ECG data
+    - convert data to tsai format for univariate TSC
+    - train InceptionTime
+    - Evaluation of model
+    - Inference
+
+Installation:
+use conda environment tsai (Python 3.10), see environment_tsai.yml
+
+How to use:
+    tsai = TSai(inpath, fname_csv)
+    df = tsai.load_data(inpath, fname_csv)
+    X, y = tsai.df_to_ts(df, wavefront, target)
+    tsai.train_model(X, y)
+    accuracy, precision, auc = tsai.eval_model()
+
+Author: Sebastian Haan
+"""
 
 
 from tsai.basics import (
@@ -30,9 +57,15 @@ target = 'scar'
 
 class TSai:
     """
-    Class to train and evaluate a classifier using the tsai package.
+    This classifier uses InceptionTime, which is an ensemble of five deep Convolutional Neural Network (CNN) models for TSC.
+    The implementation leverages the python package tsai: https://timeseriesai.github.io/tsai
 
-    This class allows to load the data, convert it to the tsai format, train the model, and evaluate the model.
+    This class includes functionality to:
+      - load ECG data
+      - convert data to tsai format for univariate TSC
+      - train InceptionTime
+      - Evaluation of model
+      - Inference
 
     Args:
         inpath (str): Path to the input data
@@ -43,7 +76,7 @@ class TSai:
         df = tsai.load_data(inpath, fname_csv)
         X, y = tsai.df_to_ts(df, wavefront, target)
         tsai.train_model(X, y)
-        tsai.eval_model()
+        accuracy, precision, auc = tsai.eval_model()
     """
 
     def __init__(self, inpath, fname_csv):
@@ -243,6 +276,13 @@ class TSai:
     
 
 def run_all(inpath, fname_csv):
+    """
+    Train and evaluate the model for all targets and wavefronts.
+
+    Args:
+        inpath (str): Path to the input data
+        fname_csv (str): Filename of the csv file containing the data
+    """
     tsai = TSai(inpath, fname_csv)
     df = tsai.load_data(inpath, fname_csv)
     results = pd.DataFrame(columns=['target', 'wavefront', 'method', 'accuracy', 'precision', 'auc'])
@@ -260,6 +300,15 @@ def run_all(inpath, fname_csv):
 
 
 def test_tsai(wavefront, target, inpath, fname_csv):
+    """
+    Test the TSai classifier for a given wavefront and target.
+
+    Args:
+        wavefront (str): 'LVp', 'RVp', or 'SR'
+        target (str): 'scar' (Default) or 'endocardium_scar', 'intramural_scar', 'epicardial_scar'
+        inpath (str): Path to the input data
+        fname_csv (str): Filename of the csv file containing the data
+    """
     tsai = TSai(inpath, fname_csv)
     df = tsai.load_data(inpath, fname_csv)
     X, y = tsai.df_to_ts(df, wavefront, target)
