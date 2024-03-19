@@ -1,7 +1,7 @@
 """ Software for training and evaluation of CNN models for ECG Time Series Classification (TSC).
 
 This classifier uses InceptionTime, which is an ensemble of five deep Convolutional Neural Network (CNN) models for TSC.
-The implmentation leverages the python package tsai: https://timeseriesai.github.io/tsai
+The implementation leverages the python package tsai: https://timeseriesai.github.io/tsai
 
 References: 
 Fawaz, H. I., Lucas, B., Forestier, G., Pelletier, C., Schmidt, D. F., Weber, J., … & Petitjean, F. (2020). 
@@ -23,7 +23,7 @@ How to use:
     df = tsai.load_data(inpath, fname_csv)
     X, y = tsai.df_to_ts(df, wavefront, target)
     tsai.train_model(X, y)
-    accuracy, precision, auc = tsai.eval_model()
+    accuracy, precision, auc, mcc = tsai.eval_model()
 
 Author: Sebastian Haan
 """
@@ -41,18 +41,21 @@ from tsai.basics import accuracy as tsai_accuracy
 from tsai.inference import load_learner
 import sklearn.metrics as skm
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import accuracy_score, confusion_matrix, classification_report, roc_auc_score, precision_score
+from sklearn.metrics import (
+    accuracy_score, 
+    confusion_matrix, 
+    classification_report, 
+    roc_auc_score, 
+    precision_score,
+    matthews_corrcoef)
 from scipy.signal import resample
 import os
 import numpy as np
 import pandas as pd
 
 inpath = '../results'
+# see processing for clean data the python function: classifier_featurebased.preprocess()
 fname_csv = 'NestedDataAll_clean.csv'
-
-wavefront = 'SR'
-target = 'scar'
-
 
 
 class TSai:
@@ -76,7 +79,7 @@ class TSai:
         df = tsai.load_data(inpath, fname_csv)
         X, y = tsai.df_to_ts(df, wavefront, target)
         tsai.train_model(X, y)
-        accuracy, precision, auc = tsai.eval_model()
+        accuracy, precision, auc, mcc = tsai.eval_model()
     """
 
     def __init__(self, inpath, fname_csv):
@@ -222,7 +225,7 @@ class TSai:
             outpath (str): Path to save the results to a txt file
 
         Returns:
-            tuple: Tuple of accuracy, precision, and AUC
+            tuple: Tuple of accuracy, precision, AUC, and MCC (Matthews correlation coefficient)
         
         """
         y_probs, _, y_pred = self.clf.get_X_preds(self.X_test)
@@ -231,12 +234,14 @@ class TSai:
         accuracy = accuracy_score(self.y_test, y_pred)
         precision = precision_score(self.y_test, y_pred) 
         auc = roc_auc_score(self.y_test, y_probs[:,1])
+        mcc = matthews_corrcoef(self.y_test, y_pred)
         conf_matrix = confusion_matrix(self.y_test, y_pred)
         class_report = classification_report(self.y_test, y_pred, target_names=['no scar', 'scar'])
 
         print(f"Accuracy: {round(accuracy,4)}")
         print(f"Precision: {round(precision,4)}")
         print(f"AUC: {round(auc,4)}")
+        print(f"MCC: {round(mcc,4)}")
         print("Confusion Matrix:")
         print(conf_matrix)
         print("Classification Report:")
@@ -249,11 +254,12 @@ class TSai:
                 f.write(f"Accuracy: {round(accuracy,4)}\n")
                 f.write(f"Precision: {round(precision,4)}\n")
                 f.write(f"AUC: {round(auc,4)}\n")
+                f.write(f"MCC: {round(mcc,4)}\n")
                 f.write("Confusion Matrix:\n")
                 f.write(str(conf_matrix))
                 f.write("\nClassification Report:\n")
                 f.write(class_report)
-        return (accuracy, precision, auc)
+        return (accuracy, precision, auc, mcc)
 
     def predict(self, X, reload_model_from_path=None):
         """
@@ -285,7 +291,7 @@ def run_all(inpath, fname_csv):
     """
     tsai = TSai(inpath, fname_csv)
     df = tsai.load_data(inpath, fname_csv)
-    results = pd.DataFrame(columns=['target', 'wavefront', 'method', 'accuracy', 'precision', 'auc'])
+    results = pd.DataFrame(columns=['target', 'wavefront', 'method', 'accuracy', 'precision', 'auc', 'mcc'])
     method = 'CNN'
     path = '../results/tsai'
     for target in ['scar','endocardium_scar','intramural_scar','epicardial_scar']:
@@ -293,8 +299,14 @@ def run_all(inpath, fname_csv):
             X, y = tsai.df_to_ts(df, wavefront, target)
             tsai.train_model(X, y, epochs = 120, balance_classes = True)
             path_name = path + f'_{target}_{wavefront}' 
-            accuracy, precision, auc = tsai.eval_model(outpath=path_name)
-            new_row = [{'target': target, 'wavefront': wavefront, 'method': method, 'accuracy': accuracy, 'precision': precision, 'auc': auc}]
+            accuracy, precision, auc, mcc = tsai.eval_model(outpath=path_name)
+            new_row = [{'target': target, 
+                        'wavefront': wavefront, 
+                        'method': method, 
+                        'accuracy': accuracy, 
+                        'precision': precision, 
+                        'auc': auc,
+                        'mcc': mcc}]
             results = pd.concat([results, pd.DataFrame(new_row)], ignore_index=True)
     results.to_csv(os.path.join(path, 'results_stats_all.csv'), index=False)
 
@@ -314,4 +326,4 @@ def test_tsai(wavefront, target, inpath, fname_csv):
     X, y = tsai.df_to_ts(df, wavefront, target)
     tsai.train_model(X, y, epochs = 100, balance_classes = True)
     path_name = '../results/tsai' + f'_{target}_{wavefront}' 
-    accuracy, precision, auc = tsai.eval_model(outpath=path_name)
+    accuracy, precision, auc, mcc = tsai.eval_model(outpath=path_name)
