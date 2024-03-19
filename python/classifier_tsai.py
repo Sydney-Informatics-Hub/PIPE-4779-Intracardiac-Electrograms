@@ -3,20 +3,14 @@
 
 
 from tsai.basics import (
-    Categorize, 
-    TSDatasets, 
-    Learner, accuracy, 
+    Learner,
     TSStandardize, 
     TSClassification,
-    ClassificationInterpretation,
     combine_split_data,
     TSClassifier,
-    accuracy,
-    F1Score,
-    Recall,
-    Precision,
     ShowGraph
 )
+from tsai.basics import accuracy as tsai_accuracy
 from tsai.inference import load_learner
 import sklearn.metrics as skm
 from sklearn.model_selection import train_test_split
@@ -174,8 +168,7 @@ class TSai:
                         arch="InceptionTimePlus", 
                         tfms=tfms, 
                         batch_tfms=batch_tfms, 
-                        #metrics=[accuracy, Precision, Recall],
-                        metrics = accuracy,
+                        metrics = tsai_accuracy,
                         weights = self.sample_weight,
                         #cbs=ShowGraph()
                         )
@@ -258,7 +251,7 @@ def run_all(inpath, fname_csv):
     for target in ['scar','endocardium_scar','intramural_scar','epicardial_scar']:
         for wavefront in ['SR', 'LVp', 'RVp']:
             X, y = tsai.df_to_ts(df, wavefront, target)
-            tsai.train_model(X, y, epochs = 100, balance_classes = True)
+            tsai.train_model(X, y, epochs = 120, balance_classes = True)
             path_name = path + f'_{target}_{wavefront}' 
             accuracy, precision, auc = tsai.eval_model(outpath=path_name)
             new_row = [{'target': target, 'wavefront': wavefront, 'method': method, 'accuracy': accuracy, 'precision': precision, 'auc': auc}]
