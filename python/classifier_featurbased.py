@@ -1,15 +1,33 @@
 """
-Classification based on feature extraction.
+Timeseries classification for ECG data using feature-selection and Random Forest/XGboost.
 
-This script is used to classify the data based on the features extracted from the electrograms timeseries.
-Two classification methods are supported: Random Forest and XGBoost.
+Feature extraction and selection is performed using the FeatureExtraction class from the features.py module.
+
+How to use:
+    - preprocess: Run the preprocess function to prepare the ECG data for classification
+    - classify: Run the classify function to classify the data using the selected features and the target label
+
+If all targets and wavefronts are to be classified, use the run_all function.
+The results are saved to a txt and csf file in the specified output folder.
+
+The combine_txt function can be used to combine all txt files into one (for easier comparison).
+
+For installation of required packages and dependencies, see environment.yaml.
+
+Author: Sebastian Haan
 """
 
 import os
 import numpy as np
 import pandas as pd
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import accuracy_score, confusion_matrix, classification_report, roc_auc_score, precision_score
+from sklearn.metrics import (
+    accuracy_score, 
+    confusion_matrix, 
+    classification_report, 
+    roc_auc_score, 
+    precision_score,
+    matthews_corrcoef)
 from sklearn.ensemble import RandomForestClassifier
 import xgboost as xgb
 
@@ -21,9 +39,28 @@ animal_labels = ['S9', 'S12', 'S15', 'S17', 'S18', 'S20']
 outpath = '../results'
 target = 'scar'
 
-def preprocess():
-    # Data preparation
-    # read in all data of list_fnames_csv as dataframe and concatenate
+def preprocess(outpath = '../results', 
+               fname_csv_core = 'NestedData', 
+               animal_labels = ['S9', 'S12', 'S15', 'S17', 'S18', 'S20'], 
+               inpath = '../../../data/generated',
+               fname_out = 'NestedDataAll_clean.csv'):
+    """
+    The preprocess function reads in all data of list_fnames_csv as dataframe and concatenates them.
+    The data is then saved to a csv file.
+
+    Parameters
+    ----------
+    outpath : str
+        Path to the output folder
+    fname_csv_core : str
+        Core name of the csv files
+    animal_labels : list
+        List of animal labels
+    inpath : str
+        Path to the data
+    fname_out : str
+        Name of the output file
+    """
     usecols = [
                 'Point_Number',
                 'WaveFront',
@@ -51,8 +88,7 @@ def preprocess():
             else:
                 df = pd.concat([df, dfnew], ignore_index=True)
     os.makedirs(outpath, exist_ok=True)
-    fname_all = 'NestedDataAll_clean.csv'
-    df.to_csv(os.path.join(outpath, fname_all), index=False)
+    df.to_csv(os.path.join(outpath, fname_out), index=False)
 
 
 
@@ -78,6 +114,10 @@ def classify(path,
     method : str
         Classification method, either 'xgboost' or 'rf'
 
+    Returns
+    -------
+    tuple
+        Tuple containing the accuracy, precision, AUC, and MCC of the classifier
     """
     
     outpath = os.path.join(path, target+'_'+wavefront)
@@ -127,7 +167,8 @@ def classify(path,
     
     # Evaluate the classifier
     accuracy = accuracy_score(y_test, y_pred)
-    precision = precision_score(y_test, y_pred) 
+    precision = precision_score(y_test, y_pred)
+    mcc = matthews_corrcoef(y_test, y_pred)
     auc = roc_auc_score(y_test, y_probs)
     conf_matrix = confusion_matrix(y_test, y_pred)
     class_report = classification_report(y_test, y_pred, target_names=['no scar', 'scar'])
@@ -137,6 +178,7 @@ def classify(path,
         f.write(f"Accuracy: {round(accuracy,4)}\n")
         f.write(f"Precision: {round(precision,4)}\n")
         f.write(f"AUC: {round(auc,4)}\n")
+        f.write(f"MCC: {round(mcc,4)}\n")
         f.write("Confusion Matrix:\n")
         f.write(str(conf_matrix))
         f.write("\nClassification Report:\n")
@@ -145,25 +187,33 @@ def classify(path,
     print(f"Accuracy: {round(accuracy,4)}")
     print(f"Precision: {round(precision,4)}")
     print(f"AUC: {round(auc,4)}")
+    print(f"MCC: {round(mcc,4)}")
     print("Confusion Matrix:")
     print(conf_matrix)
     print("Classification Report:")
     print(class_report)
-    return (accuracy, precision, auc)
+    return (accuracy, precision, auc, mcc)
 
 
 def run_all(path='../results', infile_features = 'NestedDataAll_clean.csv'):
+    """
+    Run the preprocess and classify functions for all targets and wavefronts.
+    Saves the results to a csv file.
+    """
     preprocess()
-    results = pd.DataFrame(columns=['target', 'wavefront', 'method', 'accuracy', 'precision', 'auc'])
+    results = pd.DataFrame(columns=['target', 'wavefront', 'method', 'accuracy', 'precision', 'auc', 'mcc'])
     for target in ['scar','endocardium_scar','intramural_scar','epicardial_scar']:
         for wavefront in ['SR', 'LVp', 'RVp']:
             for method in ['xgboost', 'rf']:
-                accuracy, precision, auc = classify(path, infile_features, target, wavefront, method)
-                results = results.append({'target': target, 'wavefront': wavefront, 'method': method, 'accuracy': accuracy, 'precision': precision, 'auc': auc}, ignore_index=True)
+                accuracy, precision, auc, mcc = classify(path, infile_features, target, wavefront, method)
+                results = results.append({'target': target, 'wavefront': wavefront, 'method': method, 'accuracy': accuracy, 'precision': precision, 'auc': auc, 'mcc': mcc}, ignore_index=True)
     results.to_csv(os.path.join(path, 'results_stats_all.csv'), index=False)
 
+
 def combine_txt():
-    # combine all txt files into one incl file name
+    """
+    Combine all txt files into one incl file name
+    """
     outpath = '../results'
     all_txt = ''
     for target in ['scar','endocardium_scar','intramural_scar','epicardial_scar']:
