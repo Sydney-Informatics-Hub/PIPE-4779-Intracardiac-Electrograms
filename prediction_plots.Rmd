@@ -1,0 +1,106 @@
+---
+title: "prediction plots"
+author: "Kristian Maras"
+date: "2024-03-19"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(here)
+library(tidyverse)
+library(plotly)
+source("paths.R")
+# Predictions are from Basic Model - Filtered data
+# see individual_model.ows orange file
+# to work on a 3d plot of predictors versus truth
+get_paths()
+
+
+#"individual_model_predictions.tab"
+get_predictions <- function(predictions_file){
+  predictions_file <- here::here("orange_exploration",predictions_file)
+  predictions <- read.delim(predictions_file, header = TRUE,skip=0)
+  predictions <- predictions[-c(1:2), ]
+
+  predictions <- predictions %>% select(depth_label,X,Y,Z,Point_Number,sheep,WaveFront,
+                                        Gradient.Boosting..1.,
+                                        Gradient.Boosting..1...NoScar.,
+                                        Gradient.Boosting..1...AtLeastEndo.,
+                                        Gradient.Boosting..1...AtLeastIntra.,
+                                        Gradient.Boosting..1...epiOnly.,
+  )
+
+  predictions <- predictions %>% rename(Prediction = Gradient.Boosting..1.) %>%
+    select(depth_label,X,Y,Z,Point_Number,sheep,WaveFront,Prediction)
+
+  predictions <- predictions %>%
+    mutate(is_correct = ifelse(Prediction == depth_label,"Correct","Incorrect"))
+
+  return(predictions)
+}
+
+
+plot_all_wavefront <- function(data,select_sheep,data_type) {
+  data_plot <- data %>% filter(sheep == select_sheep)
+
+  fig <- plot_ly(data_plot, x = ~X, y = ~Y, z = ~Z, type = "scatter3d", mode = "markers", marker = list(size = 3),
+                 color = ~is_correct, colors = c("blue", "red")) %>%
+    layout(title = paste0("Sheep ",select_sheep," ",data_type))
+
+  fig
+
+}
+```
+
+### Plots of Prediction Accuracy Based on Test Data Set
+
+The Model used is the Gradient boosting model trainined on basic features from with the orange data mining app.
+
+The test data set represents 10% of the data. The test data hasnt been seen by the trainined model.
+
+What we are looking for are clusters of inaccuracy that imply the model. What we want to see is incorrect predictions that are not grouped in an area of space or concentrated in a particular sheep that imply a weakness in the model.
+
+```{r}
+data <- get_predictions("individual_model_predictions.tab")
+plot_all_wavefront(data,"S9","Test data")
+plot_all_wavefront(data,"S12","Test data")
+plot_all_wavefront(data,"S15","Test data")
+plot_all_wavefront(data,"S17","Test data")
+plot_all_wavefront(data,"S18","Test data")
+plot_all_wavefront(data,"S20","Test data")
+```
+
+### Plots of Prediction Accuracy Based on Test AND Training Data - i.e. All Data
+
+While not an accurate way to assess the model performance, by evaluating the model on data it has seen before, the 3d plot should make more sense in what is looks like.
+
+```{r}
+data <- get_predictions("predictions_3d_all_data.tab")
+plot_all_wavefront(data,"S9", "All data")
+plot_all_wavefront(data,"S12","All data")
+plot_all_wavefront(data,"S15","All data")
+plot_all_wavefront(data,"S17","All data")
+plot_all_wavefront(data,"S18","All data")
+plot_all_wavefront(data,"S20","All data")
+```
+
+
+### Some conclusions
+
+Some cursory conclusions can be drawn when Comparing the All Data predictions to the 3D.html that show the ground truth.
+
+
+1. S9 inaccuracies driven by a large proportion of epi-only labels the basic model has difficulty predicting on.
+
+
+2. S12 has good prediction accuracy in areas where there is a large "At Least Endo" label. Inaccuracies are evenly spread otherwise (which is good)
+
+3. S18. Inaccuracies group together where there are "At Least Intra" and "Epi Only" labels.
+
+4. S20 (control sheep) has high level of predictor accuracy as it has majority of "No Scar" label. Where there are inaccuracies it is distributed in space and not clustered around a small amout of "At least Endo" labels (which is good)
+
+Overall there is no bias in a particular sheep or area in space. Inaccuracies primarily driven by the basic model and its ineffectiveness in outer layers.
+
+
+
+
