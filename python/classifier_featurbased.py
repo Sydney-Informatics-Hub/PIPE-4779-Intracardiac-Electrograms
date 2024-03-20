@@ -7,6 +7,10 @@ How to use:
     - preprocess: Run the preprocess function to prepare the ECG data for classification
     - classify: Run the classify function to classify the data using the selected features and the target label
 
+Python example:
+from classifier_featurebased run_all
+run_all()
+
 If all targets and wavefronts are to be classified, use the run_all function.
 The results are saved to a txt and csf file in the specified output folder.
 

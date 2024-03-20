@@ -14,6 +14,7 @@ Functionality:
 
 Example how to use:
 -------------------
+    from features import FeatureExtraction
     target = 'scar'
     wavefront = 'SR'
     outpath = 'test'

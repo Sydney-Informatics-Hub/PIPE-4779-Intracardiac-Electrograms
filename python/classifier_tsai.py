@@ -19,6 +19,7 @@ Installation:
 use conda environment tsai (Python 3.10), see environment_tsai.yml
 
 How to use:
+    from classifier_tsai import TSai
     tsai = TSai(inpath, fname_csv)
     df = tsai.load_data(inpath, fname_csv)
     X, y = tsai.df_to_ts(df, wavefront, target)
