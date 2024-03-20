@@ -8,7 +8,7 @@ How to use:
     - classify: Run the classify function to classify the data using the selected features and the target label
 
 Python example:
-from classifier_featurebased run_all
+from classifier_featurebased import run_all
 run_all()
 
 If all targets and wavefronts are to be classified, use the run_all function.
