@@ -53,6 +53,7 @@ from scipy.signal import resample
 import os
 import numpy as np
 import pandas as pd
+import time
 
 inpath = '../results'
 # see processing for clean data the python function: classifier_featurebased.preprocess()
@@ -111,6 +112,10 @@ class TSai:
         df['intramural_scar'] = df['intramural_scar'].astype(int)
         df['epicardial_scar'] =df['epicardial_scar'].astype(int)
         df['scar'] = df[['endocardium_scar', 'intramural_scar', 'epicardial_scar']].max(axis=1)
+        df['NoScar'] = 1 - df['scar']
+        df['AtLeastEndo'] = df['endocardium_scar']
+        df['AtLeastIntra'] = df['intramural_scar'] & ~df['endocardium_scar']
+        df['epiOnly'] = df['epicardial_scar'] & ~df['endocardium_scar'] & ~df['intramural_scar']
         return df
 
     def df_to_ts(self, df, wavefront, target='scar'):
@@ -282,20 +287,27 @@ class TSai:
     
     
 
-def run_all(inpath, fname_csv):
+def run_all(inpath, 
+            fname_csv, 
+            target_list = ['scar','endocardium_scar','intramural_scar','epicardial_scar']):
     """
     Train and evaluate the model for all targets and wavefronts.
 
     Args:
         inpath (str): Path to the input data
         fname_csv (str): Filename of the csv file containing the data
+        target_list (list): List of target labels (Default: ['scar','endocardium_scar','intramural_scar','epicardial_scar'])
+            other option: ['NoScar', 'AtLeastEndo', 'AtLeastIntra', 'epiOnly']
     """
     tsai = TSai(inpath, fname_csv)
     df = tsai.load_data(inpath, fname_csv)
     results = pd.DataFrame(columns=['target', 'wavefront', 'method', 'accuracy', 'precision', 'auc', 'mcc'])
     method = 'CNN'
-    path = '../results/tsai'
-    for target in ['scar','endocardium_scar','intramural_scar','epicardial_scar']:
+    # date and time in string format
+    now = time.strftime("%Y%m%d_%H%M%S")
+    path = f'../results/tsai/{now}'
+    os.makedirs(path, exist_ok=True)
+    for target in target_list:
         for wavefront in ['SR', 'LVp', 'RVp']:
             X, y = tsai.df_to_ts(df, wavefront, target)
             tsai.train_model(X, y, epochs = 120, balance_classes = True)
