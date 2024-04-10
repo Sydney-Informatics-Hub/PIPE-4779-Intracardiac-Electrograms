@@ -126,6 +126,8 @@ class TSai:
             wavefront (str): 'LVp', 'RVp', or 'SR'
             target (str): 'scar' (Default) or 'endocardium_scar', 'intramural_scar', 'epicardial_scar'
         """
+        self.wavefront = wavefront
+        self.target = target
         dfsel = df[df['WaveFront'] == wavefront][['Point_Number', 'time', 'signal_data', target]]
         npoints_unique = dfsel['Point_Number'].nunique()
         signal = [] #np.zeros((npoints_unique, timeseries['signal_data'].apply(len).max()))
@@ -217,7 +219,7 @@ class TSai:
         self.clf.fit_one_cycle(epochs)#, 3e-4)
 
         # save the model
-        outname = f"clf_{target}_{wavefront}_{epochs}epochs.pkl"
+        outname = f"clf_{self.target}_{self.wavefront}_{epochs}epochs.pkl"
         self.clf.export(outname)
         # load the model
         #clf = load_learner("models/clf.pkl")
@@ -256,7 +258,7 @@ class TSai:
         # save results to txt file
         if outpath:
             os.makedirs(outpath, exist_ok=True)
-            with open(os.path.join(outpath, f'results_{target}_{wavefront}.txt'), 'w') as f:
+            with open(os.path.join(outpath, f'results_{self.target}_{self.wavefront}.txt'), 'w') as f:
                 f.write(f"Accuracy: {round(accuracy,4)}\n")
                 f.write(f"Precision: {round(precision,4)}\n")
                 f.write(f"AUC: {round(auc,4)}\n")
@@ -267,20 +269,21 @@ class TSai:
                 f.write(class_report)
         return (accuracy, precision, auc, mcc)
 
-    def predict(self, X, reload_model_from_path=None):
+    def predict(self, X, reload_model_from_path=None, path_model=None):
         """
         Predict the labels for the given signals using the trained classifier.
 
         Args:
             X (np.array): Array of signals
             load_model_from_path (str): Path to the trained model to reload (optional, default: None)
+            path_model (str): Path to save the trained model (optional, default: None)
         
         Returns:
             np.array: Array of predicted labels
             np.array: Array of predicted probabilities
 
         """
-        if reload_model_from_path:
+        if (reload_model_from_path is not None) and (path_model is not None):
             self.clf = load_learner(path_model)
         probas, _, preds = self.clf.get_X_preds(X)
         return preds, probas
