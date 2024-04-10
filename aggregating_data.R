@@ -6,8 +6,8 @@ library(plotly)
 library(arrow)
 source("paths.R")
 get_paths()
-# run_all("S15") #done again "S9" "S17" "S18" "S12" "S20" "S15"
-
+# run_all("S20") #done again "S9" "S17" "S18" "S12" "S20" "S15"
+# done "S18" "S20" "S12" "S17" "S15"
 
 # The run_all is made up of the following components:
 # run retrieve_all_signals("S17") to aggregate the data for animal S18. Will Save rds file.
@@ -15,7 +15,6 @@ get_paths()
 # run write_as_long_format("S17") to save as a csv in long format (for possible python stuff)
 # run write_as_parquet("S17") to save nested data as parquet file
 
-post_introduction_perc_health("S15")
 
 #sheep_name <- "S20"
 #get_paths(sheep_name)
@@ -172,6 +171,45 @@ get_signal_data <- function(WaveFront, Catheter_Type, Point_Number) {
   return(signal)
 }
 
+get_signal_unipolar_data <- function(WaveFront, Catheter_Type, Point_Number) {
+  # read the signal information
+  # Assumes rows where the data starts is constant.
+
+  woi <- find_window(WaveFront,Catheter_Type,Point_Number)
+  if (is.null(woi)) {
+    return() #return null - could find signal info
+  }
+  txt_file <- find_signal_file(WaveFront,Catheter_Type,Point_Number)
+  tabular_content <-  read_table(txt_file, skip = 3)
+  raw_ecg_gain <- str_extract(read_lines(txt_file,n_max = 4), "^Raw ECG to MV \\(gain\\) = ([0-9.]+)$") %>%
+    parse_number()
+  raw_ecg_gain <- raw_ecg_gain[!is.na(raw_ecg_gain)]
+
+  #double check gain and channels are extracted from txt file
+
+  if (!is.numeric(raw_ecg_gain)) {
+    return() #return null
+  }
+
+  lines <- read_lines(txt_file, n_max = 4)
+  pattern <- "Unipolar Mapping Channel=\\w+_\\w+"
+  channel <- str_extract(lines, pattern)
+  channel <- str_match(channel[3], "Unipolar Mapping Channel=(\\w+_\\w+)")[2]
+
+
+  if (is.null(channel)) {
+    return() #return null
+  }
+
+
+ # sometimes if channel is 20A_1, the teen numbers get picked up -
+  signal <- tabular_content %>% select(contains(channel)) %>% select(-contains("-")) %>% select(1) %>%
+    slice(.,woi$From:woi$To ) * raw_ecg_gain
+
+  #standardising column name irrespective of channel name
+  signal <- signal %>% rename(.,"signal_data" = names(signal))
+  return(signal)
+}
 
 get_raw_signal_data <- function(WaveFront, Catheter_Type, Point_Number) {
 
@@ -212,7 +250,8 @@ retrieve_all_signals <- function(sheep_name) {
 
   LabelledSignalData <- LabelledSignalData %>% rowwise() %>%
    mutate(signal = list(get_signal_data(WaveFront, Catheter_Type, Point_Number)),
-           rawsignal = list(get_raw_signal_data(WaveFront, Catheter_Type, Point_Number)))
+           rawsignal = list(get_raw_signal_data(WaveFront, Catheter_Type, Point_Number)),
+          signal_unipolar = list(get_signal_unipolar_data(WaveFront, Catheter_Type, Point_Number)))
 
 
   # bring extra woi data only if there is a signal
@@ -228,6 +267,7 @@ retrieve_all_signals <- function(sheep_name) {
     mutate(across(where(is.character), as.factor))
 
   LabelledSignalData <- LabelledSignalData %>% arrange(sheep,Catheter_Type,WaveFront,Point_Number)
+
 
   saveRDS(LabelledSignalData,file = here::here(generated_data_path,paste0("LabelledSignalData",sheep_name,".rds")))
   }

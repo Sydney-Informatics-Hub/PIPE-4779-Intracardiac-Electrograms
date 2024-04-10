@@ -21,16 +21,50 @@ If you make use of this software for your research project, please include the f
 
 ## Main Software components
 
-1. aggregating_data.R:  aggregates data (signals and labels) into a single dataframe given the data structure sheep/labelled (holding the 3 labelled sheets) and sheep/Export_Analysis (holding all other files).
+1. aggregating_data.R:  Aggregates data (signals and labels) into a single dataframe given the data structure sheep/labelled (holding the 3 labelled sheets) and sheep/Export_Analysis (holding all other files). Structure expected looks like:
 
-2. post_aggregation.R: aggregates data for all sheep and produces 2 rds files, imputed_aggregate_data.rds and filtered_aggregate_data.rds, used for orange data mining analysis. These files are neccessary for building_features.R
+```
+├── S12
+│   ├── Export_Analysis
+│   │   ├── 1-LV_Points_Export.xml
+│   │   ├── 1-LV_car.txt
+│   │   ├── 10-1-1-1-1-1-1-ReLV RVp Penta.mesh
+│   │   ├── 10-1-1-1-1-1-1-ReLV RVp Penta_P100_ECG_Export.txt
+│   │   ├── 10-1-1-1-1-1-1-ReLV RVp Penta_P100_MAGNETIC_20_POLE_A_CONNECTOR_Eleclectrode_Positions.txt
+
+... etc etc...
+
+│   ├── Analysis 01_05_2024 17-02-34.xml
+│   └── _image.mesh
+└── labelled
+    ├── cleaned_LVp Penta_car_labelled.xlsx
+    ├── cleaned_RVp Penta_car_labelled.xlsx
+    └── cleaned_SR Penta_car_labelled.xlsx
+```
+
+Note: Files within the S9 Data dump was inconsistently named. This has been accounted for but not that consistent naming is required as the aggregation relies on patters of words which the file names adhere to.
+
+
+2. post_aggregation.R: aggregates data for all sheep and produces 2 rds files, imputed_aggregate_data.rds and filtered_aggregate_data.rds, used for orange data mining analysis. These files are neccessary for building_features.R and also the /python modelling (point 8)
+
 
 3. building_features.R: Builds basic features driven by client conversations. Choose either filtered data or imputed (where blanks in histology labels are treated as NoScar)
 
+
 4. building_tsfeatures.R: builds many features according to the tsfresh package.
+
+
+3 and 4 are used to save csv files that orange data mining uses in exploring models and metrics.
+
+
+Some visually driven files include: 
 
 5. EDA.Rmd: Explores data and producing graphs. Relatedly save_plots.R save plots to file
 
-6. model.R (possibly to be continued when implementation chosen)
+6. prediction_plots.Rmd: Plots of predictions from a model trained in orange data mining. Used to investigate if there are clusters of inaccuracy from within an area of space or from a particular sheep. 
+
+7. 3D.Rmd: Plots of the labelled data (i.e. ground truth) in 3d space
+
+8. /python holds independent modelling based on a definitions that treats 3 layers in an independent way. Models are more sophisticated and have better accuracy (than compared to the orange exploration)
 
 
