@@ -4,8 +4,10 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 # Load the CSV file
-file_path = '../results/statresults_comb.csv'
+#file_path = '../results/statresults_comb.csv'
+file_path = '../results/tsai/20240410_163628/results_stats_all.csv'
 data = pd.read_csv(file_path)
+output_path = '../results/tsai/20240410_163628/'
 
 # Display the first few rows of the dataframe
 data.head()
@@ -33,6 +35,7 @@ ax[1].set_xlabel('AUC')
 ax[1].set_ylabel('')
 
 plt.tight_layout()
+plt.savefig(output_path + 'ranked_barcharts.png', dpi =200)
 plt.show()
 
 
@@ -56,6 +59,7 @@ ax[1].set_xlabel('Mean AUC')
 ax[1].set_ylabel('Target')
 
 plt.tight_layout()
+plt.savefig(output_path + 'mean_accuracy_auc_by_target.png',dpi=200)
 plt.show()
 
 
@@ -79,6 +83,7 @@ ax[1].set_xlabel('Mean AUC')
 ax[1].set_ylabel('Wavefront')
 
 plt.tight_layout()
+plt.savefig(output_path + 'mean_accuracy_auc_by_wavefront.png',dpi=200)
 plt.show()
 
 
@@ -103,4 +108,5 @@ ax[1].set_xlabel('Mean AUC')
 ax[1].set_ylabel('Method')
 
 plt.tight_layout()
+plt.savefig(output_path + 'mean_accuracy_auc_by_method.png',dpi=200)
 plt.show()
