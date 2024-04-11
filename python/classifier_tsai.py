@@ -29,7 +29,6 @@ How to use:
 Author: Sebastian Haan
 """
 
-
 from tsai.basics import (
     Learner,
     TSStandardize, 
@@ -58,6 +57,7 @@ import time
 inpath = '../results'
 # see processing for clean data the python function: classifier_featurebased.preprocess()
 fname_csv = 'NestedDataAll_clean.csv'
+#fname_csv = 'NestedDataAll_rawsignal_clean.parquet'
 
 
 class TSai:
@@ -102,7 +102,13 @@ class TSai:
         # check if file exists
         if not os.path.isfile(os.path.join(inpath, fname_csv)):
             raise FileNotFoundError(f'File {fname_csv} not found in {inpath}')
-        df = pd.read_csv(os.path.join(inpath, fname_csv), usecols=usecols)
+        # check if file exists and csv
+        if fname_csv.endswith('.csv'):
+            df = pd.read_csv(os.path.join(inpath, fname_csv), usecols=usecols)
+        elif fname_csv.endswith('.parquet'):
+            df = pd.read_parquet(os.path.join(inpath, fname_csv), columns=usecols)
+        else:
+            raise ValueError(f'File {fname_csv} is not a csv or parquet file')
         # remove nan values
         df = df.dropna()
         # add column "time" to df which starts at 0 and has the same length as "signal_data" for each Point_Number and WaveFront
@@ -135,6 +141,7 @@ class TSai:
         # get length of signal_data for each point
         signal_length = dfsel.groupby('Point_Number')['signal_data'].apply(len)
         signal_length_max = signal_length.max()
+        print(f"Max signal length: {signal_length_max}")
         X = np.zeros((len(y), signal_length_max))
         #aggregate 'signal_data' directly 
         aggregated_data = dfsel.groupby('Point_Number')['signal_data'].agg(list)
@@ -340,6 +347,6 @@ def test_tsai(wavefront, target, inpath, fname_csv):
     tsai = TSai(inpath, fname_csv)
     df = tsai.load_data(inpath, fname_csv)
     X, y = tsai.df_to_ts(df, wavefront, target)
-    tsai.train_model(X, y, epochs = 100, balance_classes = True)
+    tsai.train_model(X, y, epochs = 120, balance_classes = True)
     path_name = '../results/tsai' + f'_{target}_{wavefront}' 
     accuracy, precision, auc, mcc = tsai.eval_model(outpath=path_name)
