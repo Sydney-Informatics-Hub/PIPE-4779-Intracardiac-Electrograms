@@ -15,9 +15,10 @@ get_paths()
 
 
 #data_type <- "filtered"
-data_type <- "imputed"
+#data_type <- "imputed"
 
-data <- readRDS(file = here::here(generated_data_path,paste0(data_type,"_aggregate_data.rds")))
+get_data <- function(data_type) {
+  data <- readRDS(file = here::here(generated_data_path,paste0(data_type,"_aggregate_data.rds")))
 
 # Labels
 data <- data  %>% mutate(depth_label = case_when(
@@ -28,9 +29,12 @@ data <- data  %>% mutate(depth_label = case_when(
   TRUE ~ "Otherwise"
 ))  %>% select(-c(endocardium_scar,intramural_scar,epicardial_scar))
 
+return(data)
+  
+}
 
 
-plot_all_wavefront <- function(select_sheep) {
+plot_all_wavefront <- function(data,select_sheep) {
   data_plot <- data %>% filter(sheep == select_sheep)
   
   fig <- plot_ly(data_plot, x = ~X, y = ~Y, z = ~Z, type = "scatter3d", mode = "markers", marker = list(size = 3),
@@ -51,27 +55,42 @@ plot_wavefront <- function(select_sheep,select_wavefront) {
   fig
 
 }
+
+data_filtered <- get_data("filtered")
+data_imputed <- get_data("imputed")
 ```
 
 ## 3D Plots of the curated labeles (Ground Truth)
 
+These are plots of the labelled data.
+These plots can be compared to the prediction_plots that look at prediction accuracy
 
 
-## S18
+### Plots of all wavefronts - Imputed Data
 
-```{r echo=FALSE}
-plot_all_wavefront("S18")
-plot_wavefront("S18","RVp")
-plot_wavefront("S18","LVp")
-plot_wavefront("S18","SR")
+```{r}
+
+plot_all_wavefront(data_imputed,"S9")
+plot_all_wavefront(data_imputed,"S12")
+plot_all_wavefront(data_imputed,"S15")
+plot_all_wavefront(data_imputed,"S17")
+plot_all_wavefront(data_imputed,"S18")
+plot_all_wavefront(data_imputed,"S20")
+
 ```
 
+### Plots of all wavefronts - Filtered Data
 
-Can be compared to control sheep
+
 
 ```{r echo=FALSE}
-plot_all_wavefront("S20")
 
+plot_all_wavefront(data_filtered,"S9")
+plot_all_wavefront(data_filtered,"S12")
+plot_all_wavefront(data_filtered,"S15")
+plot_all_wavefront(data_filtered,"S17")
+plot_all_wavefront(data_filtered,"S18")
+plot_all_wavefront(data_filtered,"S20")
 ```
 
 
