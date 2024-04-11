@@ -37,7 +37,7 @@ import xgboost as xgb
 
 from features import FeatureExtraction
 
-inpath = '../../../data/generated'
+inpath = '../../../data/generated_w_unipolar'
 fname_csv_core = 'NestedData'
 animal_labels = ['S9', 'S12', 'S15', 'S17', 'S18', 'S20']
 outpath = '../results'
@@ -93,7 +93,6 @@ def preprocess(outpath = '../results',
                 df = pd.concat([df, dfnew], ignore_index=True)
     os.makedirs(outpath, exist_ok=True)
     df.to_csv(os.path.join(outpath, fname_out), index=False)
-
 
 
 def classify(path, 
