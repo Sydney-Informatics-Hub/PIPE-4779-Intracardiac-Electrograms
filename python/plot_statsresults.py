@@ -5,9 +5,10 @@ import seaborn as sns
 
 # Load the CSV file
 #file_path = '../results/statresults_comb.csv'
-file_path = '../results/tsai/20240410_163628/results_stats_all.csv'
+#file_path = '../results/tsai/20240410_163628/results_stats_all.csv'
+file_path = '../results/tsai/results_stats_comp_CNN.csv'
 data = pd.read_csv(file_path)
-output_path = '../results/tsai/20240410_163628/'
+output_path = '../results/tsai/'
 
 # Display the first few rows of the dataframe
 data.head()
@@ -109,4 +110,26 @@ ax[1].set_ylabel('Method')
 
 plt.tight_layout()
 plt.savefig(output_path + 'mean_accuracy_auc_by_method.png',dpi=200)
+plt.show()
+
+
+grouped_by_method_precision = data.groupby('method')['precision'].mean().sort_values(ascending=False).reset_index()
+grouped_by_method_mcc = data.groupby('method')['mcc'].mean().sort_values(ascending=False).reset_index()
+
+fig, ax = plt.subplots(2, 1, figsize=(10, 6))
+
+# Plot for mean accuracy by method
+sns.barplot(x='precision', y='method', data=grouped_by_method_precision, ax=ax[0], palette="viridis")
+ax[0].set_title('Mean Precision by Method')
+ax[0].set_xlabel('Mean Precision')
+ax[0].set_ylabel('Method')
+
+# Plot for mean AUC by method
+sns.barplot(x='mcc', y='method', data=grouped_by_method_mcc, ax=ax[1], palette="magma")
+ax[1].set_title('Mean MCC by Method')
+ax[1].set_xlabel('Mean MCC')
+ax[1].set_ylabel('Method')
+
+plt.tight_layout()
+plt.savefig(output_path + 'mean_precision_mcc_by_method.png',dpi=200)
 plt.show()
