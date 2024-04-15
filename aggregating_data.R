@@ -311,5 +311,3 @@ write_as_parquet <- function(sheep_name){
 
 }
 
-
-
