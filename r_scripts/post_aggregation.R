@@ -52,15 +52,5 @@ cleaned_aggregate_long_data <- cleaned_aggregate_long_data %>% group_by(sheep,Po
 saveRDS(cleaned_aggregate_long_data,file = here::here(generated_data_path,"cleaned_aggregate_long_data.rds"))
 
 
-#writing long format to excel
-data <- readRDS(file = here::here(generated_data_path,"filtered_aggregate_data.rds"))
-data <- data %>% select(-c(Animal,`bipolar voltage`,`unipolar voltage`,From,To))
 
-signal_woi_bipolar_long <- data %>% unnest(signal) %>% select(-c(rawsignal, signal_unipolar))
-signal_raw_bipolar_long <- data %>% unnest(rawsignal) %>% select(-c(signal, signal_unipolar))
-signal_woi_unipolar_long <- data %>% unnest(signal_unipolar) %>% select(-c(signal, rawsignal))
-
-write_csv(signal_woi_bipolar_long,here::here(generated_data_path,"signal_woi_bipolar_long.csv"))
-write_csv(signal_raw_bipolar_long,here::here(generated_data_path,"signal_raw_bipolar_long.csv"))
-write_csv(signal_woi_unipolar_long,here::here(generated_data_path,"signal_woi_unipolar_long.csv"))
 
