@@ -210,7 +210,7 @@ def find_window(WaveFront, Catheter_Type, Point_Number, sheep_name):
 
 
 
-def find_signal_file(WaveFront, Catheter_Type, Point_Number):
+def find_signal_file(WaveFront, Catheter_Type, Point_Number,sheep_name):
     """
     Function to find the signal file for a given point.
 
@@ -225,10 +225,10 @@ def find_signal_file(WaveFront, Catheter_Type, Point_Number):
     """
     # Construct the file pattern
     pattern = f".*{WaveFront} {Catheter_Type}_P{Point_Number}_ECG_Export\\.txt$"
-    main_data_path = Path("path/to/main_data")  # Adjust the path accordingly
+    main_data_path =  get_sheep_path(sheep_name)['main_data_path']  
     
-    print(pattern)
-    print(main_data_path)
+    #print(pattern)
+    #print(main_data_path)
     
     # Find files that match the pattern
     matching_files = [f for f in main_data_path.glob('**/*') if re.match(pattern, str(f.name))]
@@ -258,13 +258,13 @@ def get_signal_data(WaveFront, Catheter_Type, Point_Number, sheep_name):
         return None  # If window of interest is not found, return None
 
     # Find the signal file
-    txt_files = find_signal_file(WaveFront, Catheter_Type, Point_Number)
+    txt_files = find_signal_file(WaveFront, Catheter_Type, Point_Number, sheep_name)
     if not txt_files:
         return None  # If no signal file is found, return None
     txt_file = txt_files[0]  # Assuming only one file is returned
 
     # Read the signal data
-    tabular_content = pd.read_csv(txt_file, skiprows=3, delimiter="\t")
+    tabular_content = pd.read_csv(txt_file, skiprows=3, delim_whitespace=True)
 
     # Extract the gain value from the file
     with open(txt_file, 'r') as file:
@@ -283,8 +283,9 @@ def get_signal_data(WaveFront, Catheter_Type, Point_Number, sheep_name):
         return None  # If channel is not found, return None
 
     # Select the relevant channel and apply the window of interest
-    if channel in tabular_content.columns:
-        signal_data = tabular_content.loc[woi['From']:woi['To'], channel] * raw_ecg_gain
+    column_name = next((col for col in tabular_content.columns if channel in col), None)
+    if column_name:
+        signal_data = tabular_content.loc[woi['From']:woi['To'], column_name] * raw_ecg_gain
         signal_data.rename("signal_data", inplace=True)
         return signal_data
     else:
@@ -299,13 +300,13 @@ def get_signal_unipolar_data(WaveFront, Catheter_Type, Point_Number, sheep_name)
         return None  # If no window of interest is found, return None
 
     # Find the signal file
-    txt_files = find_signal_file(WaveFront, Catheter_Type, Point_Number)
+    txt_files = find_signal_file(WaveFront, Catheter_Type, Point_Number, sheep_name)
     if not txt_files:
         return None  # If no signal file is found, return None
     txt_file = txt_files[0]  # Assuming only one file is returned
 
     # Read the signal data, skipping the first three rows
-    tabular_content = pd.read_csv(txt_file, skiprows=3, delimiter="\t", header=None)
+    tabular_content = pd.read_csv(txt_file, skiprows=3, delim_whitespace=True)
 
     # Extract the gain value from the file
     with open(txt_file, 'r') as file:
@@ -337,19 +338,14 @@ def get_signal_unipolar_data(WaveFront, Catheter_Type, Point_Number, sheep_name)
 
 
 def get_raw_signal_data(WaveFront, Catheter_Type, Point_Number, sheep_name):
-    # Get the window of interest
-    woi = find_window(WaveFront, Catheter_Type, Point_Number, sheep_name)
-    if woi is None:
-        return None  # Return None if window of interest is not found
-
     # Find the signal file
-    txt_files = find_signal_file(WaveFront, Catheter_Type, Point_Number)
+    txt_files = find_signal_file(WaveFront, Catheter_Type, Point_Number, sheep_name)
     if not txt_files:
         return None  # Return None if no signal file is found
     txt_file = txt_files[0]  # Assuming only one file is found
 
     # Read the table content, skipping the first three rows
-    tabular_content = pd.read_csv(txt_file, skiprows=3, delimiter="\t", header=None)
+    tabular_content = pd.read_csv(txt_file, skiprows=3, delim_whitespace=True)
 
     # Extract the gain value from the first four lines of the file
     with open(txt_file, 'r') as file:
@@ -368,9 +364,10 @@ def get_raw_signal_data(WaveFront, Catheter_Type, Point_Number, sheep_name):
         return None  # Return None if channel is not found
 
     # Find the appropriate column for the bipolar recordings given the channel and window of interest
-    if channel in tabular_content.columns:
-        signal_data = tabular_content[channel] * raw_ecg_gain
-        # Standardize column name irrespective of channel name
+    # find column name that includes the channel name in the first characters
+    column_name = next((col for col in tabular_content.columns if channel in col), None)
+    if column_name:
+        signal_data = tabular_content[column_name] * raw_ecg_gain
         signal_data.rename("signal_data", inplace=True)
         return signal_data
 
@@ -392,6 +389,11 @@ def retrieve_all_signals(sheep_name):
         LabelledSignalData.at[index, 'signal'] = get_signal_data(row['WaveFront'], row['Catheter_Type'], row['Point_Number'], sheep_name)
         LabelledSignalData.at[index, 'rawsignal'] = get_raw_signal_data(row['WaveFront'], row['Catheter_Type'], row['Point_Number'], sheep_name)
         LabelledSignalData.at[index, 'signal_unipolar'] = get_signal_unipolar_data(row['WaveFront'], row['Catheter_Type'], row['Point_Number'], sheep_name)
+
+    #LabelledSignalData['rawsignal'] = LabelledSignalData.apply(
+    #lambda row: get_raw_signal_data(row['WaveFront'], row['Catheter_Type'], row['Point_Number'], sheep_name),
+    #axis=1
+    #)
     
     # Create masks for signals present and not present
     mask_no_signals = LabelledSignalData['signal'].isnull()
@@ -408,6 +410,66 @@ def retrieve_all_signals(sheep_name):
     
     # Combine the data back together
     LabelledSignalData = pd.concat([with_signals, no_signals])
+    
+    # Convert all character columns to categorical
+    for col in LabelledSignalData.select_dtypes(include=[object]).columns:
+        LabelledSignalData[col] = LabelledSignalData[col].astype('category')
+    
+    # Sort the dataframe as per the requirement
+    LabelledSignalData.sort_values(by=['sheep', 'Catheter_Type', 'WaveFront', 'Point_Number'], inplace=True)
+    
+    # Save the processed data to a file (pickle used as a substitute for RDS)
+    output_path = generated_data_path / f"LabelledSignalData{sheep_name}.pkl"
+    LabelledSignalData.to_pickle(output_path)
+
+
+def retrieve_signal(sheep_name, signal_type):
+    """
+    Function to retrieve all signals for a given sheep and save the data to a CSV file.
+
+    Parameters:
+    sheep_name (str): The name of the sheep.   
+    signal_type (str): The type of signal to retrieve.
+        'signal', 'rawsignal', or 'signal_unipolar' 
+    """
+    # Load the initial labelled data
+    LabelledSignalData = load_sheep(sheep_name)
+
+    if signal_type == 'rawsignal':
+        LabelledSignalData['rawsignal'] = LabelledSignalData.apply(
+            lambda row: get_raw_signal_data(row['WaveFront'], row['Catheter_Type'], row['Point_Number'], sheep_name),
+            axis=1
+            )
+    elif signal_type == 'signal':
+        LabelledSignalData['signal'] = LabelledSignalData.apply(
+            lambda row: get_signal_data(row['WaveFront'], row['Catheter_Type'], row['Point_Number'], sheep_name),
+            axis=1
+            )
+    elif signal_type == 'signal_unipolar':
+        LabelledSignalData['signal_unipolar'] = LabelledSignalData.apply(
+            lambda row: get_signal_unipolar_data(row['WaveFront'], row['Catheter_Type'], row['Point_Number'], sheep_name),
+            axis=1
+            )
+    else:
+        raise ValueError("Invalid signal type. Choose from 'signal', 'rawsignal', or 'signal_unipolar'.")
+
+    
+    # Create masks for signals present and not present
+    if signal_type == 'signal':
+        mask_no_signals = LabelledSignalData['signal'].isnull()
+        mask_with_signals = ~mask_no_signals
+        
+        # Handle rows with no signals
+        no_signals = LabelledSignalData[mask_no_signals].copy()
+        no_signals['From'], no_signals['To'] = 0, 0
+        
+        # Handle rows with signals
+        with_signals = LabelledSignalData[mask_with_signals].copy()
+        with_signals['From'] = with_signals.apply(lambda row: find_from_woi(row['WaveFront'], row['Catheter_Type'], row['Point_Number'], sheep_name)[0], axis=1)
+        with_signals['To'] = with_signals.apply(lambda row: find_to_woi(row['WaveFront'], row['Catheter_Type'], row['Point_Number'], sheep_name)[1], axis=1)
+        
+        # Combine the data back together
+        LabelledSignalData = pd.concat([with_signals, no_signals])
     
     # Convert all character columns to categorical
     for col in LabelledSignalData.select_dtypes(include=[object]).columns:
