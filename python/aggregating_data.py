@@ -10,6 +10,7 @@ import re
 import os
 import pyarrow.parquet as pq
 
+
 sheep_names = ["S9" "S17" "S18" "S12" "S20" "S15"]
 generated_data_path = Path("data/generated2")
 os.makedirs(generated_data_path, exist_ok=True)
@@ -182,9 +183,21 @@ def find_window(WaveFront, Catheter_Type, Point_Number, sheep_name):
         xml_data = ET.parse(matching_files[0]).getroot()
         
         # Extract necessary data from XML using XPath
-        reference_annotation = float(xml_data.find(".//Annotations[@Reference_Annotation]").text)
-        woi_from = float(xml_data.find(".//WOI[@From]").text)
+        reference_annotation = xml_data.find(".//Annotations[@Reference_Annotation]").text
+        if reference_annotation is None:
+            return None
+        else:
+            reference_annotation = float(reference_annotation)
+        woi_from = xml_data.find(".//WOI[@From]").text
+        if woi_from is None:
+            return None
+        else:
+            woi_from = float(woi_from)
         woi_to = float(xml_data.find(".//WOI[@To]").text)
+        if woi_to is None:
+            return None
+        else:
+            woi_to = float(woi_to)   
         
         # Calculate window of interest
         woi = {
@@ -397,7 +410,7 @@ def retrieve_all_signals(sheep_name):
     LabelledSignalData = pd.concat([with_signals, no_signals])
     
     # Convert all character columns to categorical
-    for col in LabelledSignalData.select_dtypes(include=[np.object]).columns:
+    for col in LabelledSignalData.select_dtypes(include=[object]).columns:
         LabelledSignalData[col] = LabelledSignalData[col].astype('category')
     
     # Sort the dataframe as per the requirement
