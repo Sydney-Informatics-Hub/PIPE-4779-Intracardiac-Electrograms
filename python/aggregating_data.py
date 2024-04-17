@@ -7,10 +7,12 @@ import pandas as pd
 from pathlib import Path
 import xml.etree.ElementTree as ET
 import re
+import os
 import pyarrow.parquet as pq
 
 sheep_names = ["S9" "S17" "S18" "S12" "S20" "S15"]
-generated_data_path = Path("data/generated")
+generated_data_path = Path("data/generated2")
+os.makedirs(generated_data_path, exist_ok=True)
 
 def run_all(sheep_names):
     for sheep_name in sheep_names:
@@ -33,7 +35,7 @@ def run_sheep(sheep_name):
 
 def get_sheep_path(sheep):
     # Creating paths based on the sheep identifier
-    generated_data_path = Path("data/generated")
+    generated_data_path = Path("data/generated2")
     labelled_data_path = Path(f"data/{sheep}/labelled")
     main_data_path = Path(f"data/{sheep}/Export_Analysis")
     
@@ -100,7 +102,7 @@ def load_sheep(sheep_name):
 
 
 
-def find_from_woi(WaveFront, Catheter_Type, Point_Number):
+def find_from_woi(WaveFront, Catheter_Type, Point_Number, sheep_name):
     """
     Function to find the 'From' value of the Window of Interest (WOI) for a given point.
 
@@ -108,13 +110,14 @@ def find_from_woi(WaveFront, Catheter_Type, Point_Number):
     WaveFront (str): The wavefront of the point.
     Catheter_Type (str): The type of catheter used.
     Point_Number (int): The point number.
+    sheep_name (str): The name of the sheep.
 
     Returns:
     float: The 'From' value of the WOI if found, else None.
     
     """
     file_pattern = f".*{WaveFront}\\s{Catheter_Type}_P{Point_Number}_Point_Export\\.xml$"
-    main_data_path = Path("path/to/main_data")  # Adjust path accordingly
+    main_data_path = get_sheep_path(sheep_name)['main_data_path'] 
     matching_files = list(main_data_path.glob(file_pattern))
     
     if len(matching_files) == 1:
@@ -125,7 +128,7 @@ def find_from_woi(WaveFront, Catheter_Type, Point_Number):
     else:
         return None  # Python equivalent of R's NULL
 
-def find_to_woi(WaveFront, Catheter_Type, Point_Number):
+def find_to_woi(WaveFront, Catheter_Type, Point_Number, sheep_name):
     """
     Function to find the 'To' value of the Window of Interest (WOI) for a given point.
 
@@ -133,13 +136,15 @@ def find_to_woi(WaveFront, Catheter_Type, Point_Number):
     WaveFront (str): The wavefront of the point.
     Catheter_Type (str): The type of catheter used.
     Point_Number (int): The point number.
+    sheep_name (str): The name of the sheep.
+
 
     Returns:
     float: The 'To' value of the WOI if found, else None.
     
     """
     file_pattern = f".*{WaveFront}\\s{Catheter_Type}_P{Point_Number}_Point_Export\\.xml$"
-    main_data_path = Path("path/to/main_data")  # Adjust path accordingly
+    main_data_path = get_sheep_path(sheep_name)['main_data_path']  
     matching_files = list(main_data_path.glob(file_pattern))
     
     if len(matching_files) == 1:
@@ -151,7 +156,7 @@ def find_to_woi(WaveFront, Catheter_Type, Point_Number):
         return None  # Python equivalent of R's NULL
     
 
-def find_window(WaveFront, Catheter_Type, Point_Number):
+def find_window(WaveFront, Catheter_Type, Point_Number, sheep_name):
     """
     Function to find the window of interest for a given point.
 
@@ -166,7 +171,7 @@ def find_window(WaveFront, Catheter_Type, Point_Number):
     """
     # Construct the file pattern
     file_pattern = f".*{WaveFront}\\s{Catheter_Type}_P{Point_Number}_Point_Export\\.xml$"
-    main_data_path = Path("path/to/main_data")  # Adjust the path accordingly
+    main_data_path = get_sheep_path(sheep_name)['main_data_path']   # Adjust the path accordingly
     
     # Find files that match the pattern
     matching_files = [f for f in main_data_path.glob('**/*') if re.match(file_pattern, str(f.name))]
@@ -220,7 +225,7 @@ def find_signal_file(WaveFront, Catheter_Type, Point_Number):
 
 
 
-def get_signal_data(WaveFront, Catheter_Type, Point_Number):
+def get_signal_data(WaveFront, Catheter_Type, Point_Number, sheep_name):
     """
     Function to retrieve signal data for a given point.
 
@@ -228,13 +233,14 @@ def get_signal_data(WaveFront, Catheter_Type, Point_Number):
     WaveFront (str): The wavefront of the point.
     Catheter_Type (str): The type of catheter used.
     Point_Number (int): The point number.
+    sheep_name (str): The name of the sheep.
 
     Returns:
     pd.Series: A pandas Series containing the signal data if found, else None.
     """
 
     # Find the window of interest
-    woi = find_window(WaveFront, Catheter_Type, Point_Number)
+    woi = find_window(WaveFront, Catheter_Type, Point_Number, sheep_name)
     if woi is None:
         return None  # If window of interest is not found, return None
 
@@ -273,9 +279,9 @@ def get_signal_data(WaveFront, Catheter_Type, Point_Number):
 
 
 
-def get_signal_unipolar_data(WaveFront, Catheter_Type, Point_Number):
+def get_signal_unipolar_data(WaveFront, Catheter_Type, Point_Number, sheep_name):
     # Get the window of interest
-    woi = find_window(WaveFront, Catheter_Type, Point_Number)
+    woi = find_window(WaveFront, Catheter_Type, Point_Number, sheep_name)
     if woi is None:
         return None  # If no window of interest is found, return None
 
@@ -317,9 +323,9 @@ def get_signal_unipolar_data(WaveFront, Catheter_Type, Point_Number):
 
 
 
-def get_raw_signal_data(WaveFront, Catheter_Type, Point_Number):
+def get_raw_signal_data(WaveFront, Catheter_Type, Point_Number, sheep_name):
     # Get the window of interest
-    woi = find_window(WaveFront, Catheter_Type, Point_Number)
+    woi = find_window(WaveFront, Catheter_Type, Point_Number, sheep_name)
     if woi is None:
         return None  # Return None if window of interest is not found
 
@@ -370,9 +376,9 @@ def retrieve_all_signals(sheep_name):
     
     # Apply transformations row-wise
     for index, row in LabelledSignalData.iterrows():
-        LabelledSignalData.at[index, 'signal'] = get_signal_data(row['WaveFront'], row['Catheter_Type'], row['Point_Number'])
-        LabelledSignalData.at[index, 'rawsignal'] = get_raw_signal_data(row['WaveFront'], row['Catheter_Type'], row['Point_Number'])
-        LabelledSignalData.at[index, 'signal_unipolar'] = get_signal_unipolar_data(row['WaveFront'], row['Catheter_Type'], row['Point_Number'])
+        LabelledSignalData.at[index, 'signal'] = get_signal_data(row['WaveFront'], row['Catheter_Type'], row['Point_Number'], sheep_name)
+        LabelledSignalData.at[index, 'rawsignal'] = get_raw_signal_data(row['WaveFront'], row['Catheter_Type'], row['Point_Number'], sheep_name)
+        LabelledSignalData.at[index, 'signal_unipolar'] = get_signal_unipolar_data(row['WaveFront'], row['Catheter_Type'], row['Point_Number'], sheep_name)
     
     # Create masks for signals present and not present
     mask_no_signals = LabelledSignalData['signal'].isnull()
@@ -384,8 +390,8 @@ def retrieve_all_signals(sheep_name):
     
     # Handle rows with signals
     with_signals = LabelledSignalData[mask_with_signals].copy()
-    with_signals['From'] = with_signals.apply(lambda row: find_from_woi(row['WaveFront'], row['Catheter_Type'], row['Point_Number'])[0], axis=1)
-    with_signals['To'] = with_signals.apply(lambda row: find_to_woi(row['WaveFront'], row['Catheter_Type'], row['Point_Number'])[1], axis=1)
+    with_signals['From'] = with_signals.apply(lambda row: find_from_woi(row['WaveFront'], row['Catheter_Type'], row['Point_Number'], sheep_name)[0], axis=1)
+    with_signals['To'] = with_signals.apply(lambda row: find_to_woi(row['WaveFront'], row['Catheter_Type'], row['Point_Number'], sheep_name)[1], axis=1)
     
     # Combine the data back together
     LabelledSignalData = pd.concat([with_signals, no_signals])
@@ -486,6 +492,6 @@ def post_introduction_perc_health(sheep_name):
 
 
 if __name__ == "__main__":
-    run_all()
+    run_all(sheep_names)
     #post_introduction_perc_health(sheep_name)
     print("Data processing completed successfully.")
