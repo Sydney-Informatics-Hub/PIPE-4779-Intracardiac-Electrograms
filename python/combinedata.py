@@ -1,4 +1,9 @@
-# preprocess and combine data
+"""
+Preprocess and combine data from multiple sheep, and define the target variables.
+
+The output of this file can be used as input for ML models, 
+e.g. in classifier_featurebased.py, or classifier_tsai.py.
+ """ 
 
 import os
 import numpy as np
@@ -103,6 +108,8 @@ def preprocess_rawsignal(outpath = '../results',
             # remove nan values
             dfnew = dfnew.dropna()
             # modify point number to avoid duplication
+            # rename column 'rawsignal' to 'signal_data'
+            dfnew = dfnew.rename(columns={'rawsignal': 'signal_data'})
             # convert to int
             dfnew['Point_Number'] = dfnew['Point_Number'].astype(int)
             dfnew['endocardium_scar'] = dfnew['endocardium_scar'].astype(int)
