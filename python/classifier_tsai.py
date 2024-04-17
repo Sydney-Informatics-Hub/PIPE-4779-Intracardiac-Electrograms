@@ -3,6 +3,32 @@
 This classifier uses InceptionTime, which is an ensemble of five deep Convolutional Neural Network (CNN) models for TSC.
 The implementation leverages the python package tsai: https://timeseriesai.github.io/tsai
 
+The input data is expected to be in csv or parquet format and should contain the following columns:
+- Point_Number: Unique identifier for each data point
+- WaveFront: 'LVp', 'RVp', or 'SR'
+- signal_data: ECG signal data
+and the columns for the target labels, e.g.:
+- scar: 1 if there is a scar, 0 otherwise
+- endocardium_scar: 1 if there is an endocardial scar, 0 otherwise
+- intramural_scar: 1 if there is an intramural scar, 0 otherwise
+- epicardial_scar: 1 if there is an epicardial scar, 0 otherwise
+
+How to use for training and evaluation:
+    inpath = 'DATA_PATH'
+    fname_csv = 'DATA_FILE.csv or DATA_FILE.parquet'
+    outpath = 'OUTPUT_PATH'
+    run_all(inpath, 
+            fname_csv, 
+            outpath,
+            target_list = ['NoScar', 'AtLeastEndo', 'AtLeastIntra', 'epiOnly'],
+            method = 'CNN')
+
+or just run the script via command line:
+    python classifier_tsai.py
+
+
+The results are saved to a csv file.
+
 References: 
 Fawaz, H. I., Lucas, B., Forestier, G., Pelletier, C., Schmidt, D. F., Weber, J., … & Petitjean, F. (2020). 
 Inceptiontime: Finding alexnet for time series classification. Data Mining and Knowledge Discovery, 34(6), 1936-1962.
@@ -54,10 +80,6 @@ import numpy as np
 import pandas as pd
 import time
 
-inpath = '../results'
-# see processing for clean data the python function: classifier_featurebased.preprocess()
-fname_csv = 'NestedDataAll_clean.csv'
-#fname_csv = 'NestedDataAll_rawsignal_clean.parquet'
 
 
 class TSai:
@@ -297,9 +319,11 @@ class TSai:
     
     
 
-def run_all(inpath, 
+def run_all(inpath,
             fname_csv, 
-            target_list = ['scar','endocardium_scar','intramural_scar','epicardial_scar']):
+            outpath, 
+            target_list = ['NoScar', 'AtLeastEndo', 'AtLeastIntra', 'epiOnly'],
+            method = 'CNN'):
     """
     Train and evaluate the model for all targets and wavefronts.
 
@@ -307,21 +331,21 @@ def run_all(inpath,
         inpath (str): Path to the input data
         fname_csv (str): Filename of the csv file containing the data
         target_list (list): List of target labels (Default: ['scar','endocardium_scar','intramural_scar','epicardial_scar'])
-            other option: ['NoScar', 'AtLeastEndo', 'AtLeastIntra', 'epiOnly']
+            example options: ['NoScar', 'AtLeastEndo', 'AtLeastIntra', 'epiOnly'] 
+            or ['scar','endocardium_scar','intramural_scar','epicardial_scar']
+        method (str): Method to use (Default: 'CNN') 
+        rawsignal (bool): Whether to use raw signal data (Default: True) or window_of_interest data
     """
     tsai = TSai(inpath, fname_csv)
     df = tsai.load_data(inpath, fname_csv)
     results = pd.DataFrame(columns=['target', 'wavefront', 'method', 'accuracy', 'precision', 'auc', 'mcc'])
-    method = 'CNN'
     # date and time in string format
-    now = time.strftime("%Y%m%d_%H%M%S")
-    path = f'../results/tsai/{now}'
-    os.makedirs(path, exist_ok=True)
+    os.makedirs(outpath, exist_ok=True)
     for target in target_list:
         for wavefront in ['SR', 'LVp', 'RVp']:
             X, y = tsai.df_to_ts(df, wavefront, target)
             tsai.train_model(X, y, epochs = 120, balance_classes = True)
-            path_name = path + f'_{target}_{wavefront}' 
+            path_name = outpath + f'_{target}_{wavefront}' 
             accuracy, precision, auc, mcc = tsai.eval_model(outpath=path_name)
             new_row = [{'target': target, 
                         'wavefront': wavefront, 
@@ -331,7 +355,7 @@ def run_all(inpath,
                         'auc': auc,
                         'mcc': mcc}]
             results = pd.concat([results, pd.DataFrame(new_row)], ignore_index=True)
-    results.to_csv(os.path.join(path, 'results_stats_all.csv'), index=False)
+    results.to_csv(os.path.join(outpath, 'results_stats_all.csv'), index=False)
 
 
 def test_tsai(wavefront, target, inpath, fname_csv):
@@ -350,3 +374,26 @@ def test_tsai(wavefront, target, inpath, fname_csv):
     tsai.train_model(X, y, epochs = 120, balance_classes = True)
     path_name = '../results/tsai' + f'_{target}_{wavefront}' 
     accuracy, precision, auc, mcc = tsai.eval_model(outpath=path_name)
+
+
+def test_all():
+    inpath = '../results'
+    #fname_csv = 'NestedDataAll_clean.csv'
+    fname_csv = 'NestedDataAll_rawsignal_clean.parquet'
+    outpath = '../results/tsai_test_all'
+    run_all(inpath, 
+        fname_csv, 
+        outpath,
+        target_list = ['NoScar', 'AtLeastEndo', 'AtLeastIntra', 'epiOnly'],
+        method = 'CNN')
+
+
+if __name__ == '__main__':
+    inpath = input("Enter the path to the input data: ")
+    fname_csv = input("Enter the filename of the csv/parquet file containing the pre-processed data: ")
+    outpath = input("Enter the path to the output folder: ")
+    run_all(inpath, 
+            fname_csv, 
+            outpath,
+            target_list = ['NoScar', 'AtLeastEndo', 'AtLeastIntra', 'epiOnly'],
+            method = 'CNN')
