@@ -6,7 +6,7 @@ library(stringr)
 library(skimr)
 library(plotly)
 library(RColorBrewer)
-source("paths.R")
+source(here::here("r_scripts","paths.R"))
 get_paths()
 
 aggregate_data <- list.files(path = generated_data_path,
