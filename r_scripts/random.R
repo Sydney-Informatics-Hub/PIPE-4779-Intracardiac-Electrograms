@@ -26,8 +26,8 @@ write_csv(data_tsfresh, file = here::here(generated_data_path,paste0("ts_all_fea
 
 # Publishable data without any assumption on features.
 
-#data_type <- "filtered"
-data_type <- "imputed"
+data_type <- "filtered"
+#data_type <- "imputed"
 
 model_data <- readRDS(file = here::here(generated_data_path,paste0(data_type,"_aggregate_data.rds")))
 

@@ -100,3 +100,4 @@ dependencies:
       - urllib3==2.2.1
       - wasabi==1.1.2
       - weasel==0.3.4
+      - pyarrow==16.0.0
