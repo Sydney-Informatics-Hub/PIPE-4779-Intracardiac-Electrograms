@@ -17,8 +17,8 @@ How to use for training and evaluation:
     inpath = 'DATA_PATH'
     fname_csv = 'DATA_FILE.csv or DATA_FILE.parquet'
     outpath = 'OUTPUT_PATH'
-    run_all(inpath, 
-            fname_csv, 
+    run_all(inpath,
+            fname_csv,
             outpath,
             target_list = ['NoScar', 'AtLeastEndo', 'AtLeastIntra', 'epiOnly'],
             method = 'CNN')
@@ -29,8 +29,8 @@ or just run the script via command line:
 
 The results are saved to a csv file.
 
-References: 
-Fawaz, H. I., Lucas, B., Forestier, G., Pelletier, C., Schmidt, D. F., Weber, J., … & Petitjean, F. (2020). 
+References:
+Fawaz, H. I., Lucas, B., Forestier, G., Pelletier, C., Schmidt, D. F., Weber, J., … & Petitjean, F. (2020).
 Inceptiontime: Finding alexnet for time series classification. Data Mining and Knowledge Discovery, 34(6), 1936-1962.
 Official InceptionTime tensorflow implementation: https://github.com/hfawaz/InceptionTime
 
@@ -57,7 +57,7 @@ Author: Sebastian Haan
 
 from tsai.basics import (
     Learner,
-    TSStandardize, 
+    TSStandardize,
     TSClassification,
     combine_split_data,
     TSClassifier,
@@ -68,10 +68,10 @@ from tsai.inference import load_learner
 import sklearn.metrics as skm
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import (
-    accuracy_score, 
-    confusion_matrix, 
-    classification_report, 
-    roc_auc_score, 
+    accuracy_score,
+    confusion_matrix,
+    classification_report,
+    roc_auc_score,
     precision_score,
     matthews_corrcoef)
 from scipy.signal import resample
@@ -157,21 +157,11 @@ class TSai:
         self.wavefront = wavefront
         self.target = target
         dfsel = df[df['WaveFront'] == wavefront][['Point_Number', 'time', 'signal_data', target]]
-        npoints_unique = dfsel['Point_Number'].nunique()
-        signal = [] #np.zeros((npoints_unique, timeseries['signal_data'].apply(len).max()))
-        y = dfsel[['Point_Number', target]].drop_duplicates()
-        # get length of signal_data for each point
-        signal_length = dfsel.groupby('Point_Number')['signal_data'].apply(len)
-        signal_length_max = signal_length.max()
-        print(f"Max signal length: {signal_length_max}")
-        X = np.zeros((len(y), signal_length_max))
-        #aggregate 'signal_data' directly 
-        aggregated_data = dfsel.groupby('Point_Number')['signal_data'].agg(list)
-        for i, point in enumerate(y['Point_Number']):
-            data = np.array(aggregated_data[point])
-            X[i, :len(data)] = data
+        X_list = dfsel['signal_data'].apply(lambda x: [d['signal_data'] for d in x]).tolist()
+        sequence_length = len(X_list[0])
+        X_array = np.array(X_list).reshape(-1, 1, sequence_length)
 
-        return X.reshape((len(y), 1, -1)), y[target].values
+        return X_array,  dfsel[target].values
 
     def resample_signals(self, signals, sample_length):
         """
@@ -182,7 +172,7 @@ class TSai:
             sample_length (int): Length of the resampled signal
 
         Returns:
-            np.array: Array of resampled signals    
+            np.array: Array of resampled signals
         """
         resampled_signals = []
         for signal in signals:
@@ -211,7 +201,7 @@ class TSai:
             y (np.array): Array of labels
             epochs (int): Number of epochs to train the model (Default: 100)
             balance_classes (bool): Whether to balance the classes (Default: True)
-        
+
         Returns:
             TSClassifier: The trained classifier
         """
@@ -231,16 +221,16 @@ class TSai:
             self.sample_weight = None
 
         self.y[self.y==0] = -1
-        
+
         tfms  = [None, [TSClassification()]]
         batch_tfms = TSStandardize()
         # see https://timeseriesai.github.io/tsai/tslearner.html
-        self.clf = TSClassifier(self.X, self.y, 
-                        splits=self.splits, 
-                        path='models', 
-                        arch="InceptionTimePlus", 
-                        tfms=tfms, 
-                        batch_tfms=batch_tfms, 
+        self.clf = TSClassifier(self.X, self.y,
+                        splits=self.splits,
+                        path='models',
+                        arch="InceptionTimePlus",
+                        tfms=tfms,
+                        batch_tfms=batch_tfms,
                         metrics = tsai_accuracy,
                         weights = self.sample_weight,
                         #cbs=ShowGraph()
@@ -263,13 +253,13 @@ class TSai:
 
         Returns:
             tuple: Tuple of accuracy, precision, AUC, and MCC (Matthews correlation coefficient)
-        
+
         """
         y_probs, _, y_pred = self.clf.get_X_preds(self.X_test)
         y_pred = np.array([int(t) for t in y_pred])
         y_pred[y_pred==-1] = 0
         accuracy = accuracy_score(self.y_test, y_pred)
-        precision = precision_score(self.y_test, y_pred) 
+        precision = precision_score(self.y_test, y_pred)
         auc = roc_auc_score(self.y_test, y_probs[:,1])
         mcc = matthews_corrcoef(self.y_test, y_pred)
         conf_matrix = confusion_matrix(self.y_test, y_pred)
@@ -306,7 +296,7 @@ class TSai:
             X (np.array): Array of signals
             load_model_from_path (str): Path to the trained model to reload (optional, default: None)
             path_model (str): Path to save the trained model (optional, default: None)
-        
+
         Returns:
             np.array: Array of predicted labels
             np.array: Array of predicted probabilities
@@ -316,12 +306,12 @@ class TSai:
             self.clf = load_learner(path_model)
         probas, _, preds = self.clf.get_X_preds(X)
         return preds, probas
-    
-    
+
+
 
 def run_all(inpath,
-            fname_csv, 
-            outpath, 
+            fname_csv,
+            outpath,
             target_list = ['NoScar', 'AtLeastEndo', 'AtLeastIntra', 'epiOnly'],
             method = 'CNN'):
     """
@@ -331,9 +321,9 @@ def run_all(inpath,
         inpath (str): Path to the input data
         fname_csv (str): Filename of the csv file containing the data
         target_list (list): List of target labels (Default: ['scar','endocardium_scar','intramural_scar','epicardial_scar'])
-            example options: ['NoScar', 'AtLeastEndo', 'AtLeastIntra', 'epiOnly'] 
+            example options: ['NoScar', 'AtLeastEndo', 'AtLeastIntra', 'epiOnly']
             or ['scar','endocardium_scar','intramural_scar','epicardial_scar']
-        method (str): Method to use (Default: 'CNN') 
+        method (str): Method to use (Default: 'CNN')
         rawsignal (bool): Whether to use raw signal data (Default: True) or window_of_interest data
     """
     tsai = TSai(inpath, fname_csv)
@@ -343,15 +333,16 @@ def run_all(inpath,
     os.makedirs(outpath, exist_ok=True)
     for target in target_list:
         for wavefront in ['SR', 'LVp', 'RVp']:
+            print(np.shape(df), wavefront, target)
             X, y = tsai.df_to_ts(df, wavefront, target)
             tsai.train_model(X, y, epochs = 120, balance_classes = True)
-            path_name = outpath + f'_{target}_{wavefront}' 
+            path_name = outpath + f'_{target}_{wavefront}'
             accuracy, precision, auc, mcc = tsai.eval_model(outpath=path_name)
-            new_row = [{'target': target, 
-                        'wavefront': wavefront, 
-                        'method': method, 
-                        'accuracy': accuracy, 
-                        'precision': precision, 
+            new_row = [{'target': target,
+                        'wavefront': wavefront,
+                        'method': method,
+                        'accuracy': accuracy,
+                        'precision': precision,
                         'auc': auc,
                         'mcc': mcc}]
             results = pd.concat([results, pd.DataFrame(new_row)], ignore_index=True)
@@ -372,7 +363,7 @@ def test_tsai(wavefront, target, inpath, fname_csv):
     df = tsai.load_data(inpath, fname_csv)
     X, y = tsai.df_to_ts(df, wavefront, target)
     tsai.train_model(X, y, epochs = 120, balance_classes = True)
-    path_name = '../results/tsai' + f'_{target}_{wavefront}' 
+    path_name = '../results/tsai' + f'_{target}_{wavefront}'
     accuracy, precision, auc, mcc = tsai.eval_model(outpath=path_name)
 
 
@@ -381,19 +372,20 @@ def test_all():
     #fname_csv = 'NestedDataAll_clean.csv'
     fname_csv = 'NestedDataAll_rawsignal_clean.parquet'
     outpath = '../results/tsai_test_all'
-    run_all(inpath, 
-        fname_csv, 
+    run_all(inpath,
+        fname_csv,
         outpath,
         target_list = ['NoScar', 'AtLeastEndo', 'AtLeastIntra', 'epiOnly'],
         method = 'CNN')
 
 
 if __name__ == '__main__':
+    print("running")
     inpath = input("Enter the path to the input data: ")
     fname_csv = input("Enter the filename of the csv/parquet file containing the pre-processed data: ")
     outpath = input("Enter the path to the output folder: ")
-    run_all(inpath, 
-            fname_csv, 
+    run_all(inpath,
+            fname_csv,
             outpath,
             target_list = ['NoScar', 'AtLeastEndo', 'AtLeastIntra', 'epiOnly'],
             method = 'CNN')
