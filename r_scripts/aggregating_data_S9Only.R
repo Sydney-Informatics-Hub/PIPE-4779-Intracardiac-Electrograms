@@ -4,7 +4,7 @@ library(readxl) # excel files
 library(xml2) #xml files
 library(plotly)
 library(arrow)
-source("paths.R")
+source(here::here("r_scripts","paths.R"))
 
 # run_all("S9")
 
@@ -219,6 +219,48 @@ get_signal_unipolar_data <- function(WaveFront, Catheter_Type, Point_Number) {
 
 
 
+get_raw_signal_unipolar_data <- function(WaveFront, Catheter_Type, Point_Number) {
+  # read the signal information
+  # Assumes rows where the data starts is constant.
+
+  woi <- find_window(WaveFront,Catheter_Type,Point_Number)
+  if (is.null(woi)) {
+    return() #return null - could find signal info
+  }
+  txt_file <- find_signal_file(WaveFront,Catheter_Type,Point_Number)
+  tabular_content <-  read_table(txt_file, skip = 3)
+  raw_ecg_gain <- str_extract(read_lines(txt_file,n_max = 4), "^Raw ECG to MV \\(gain\\) = ([0-9.]+)$") %>%
+    parse_number()
+  raw_ecg_gain <- raw_ecg_gain[!is.na(raw_ecg_gain)]
+
+  #double check gain and channels are extracted from txt file
+
+  if (!is.numeric(raw_ecg_gain)) {
+    return() #return null
+  }
+
+  lines <- read_lines(txt_file, n_max = 4)
+  pattern <- "Unipolar Mapping Channel=\\w+_\\w+"
+  channel <- str_extract(lines, pattern)
+  channel <- str_match(channel[3], "Unipolar Mapping Channel=(\\w+_\\w+)")[2]
+
+
+  if (is.null(channel)) {
+    return() #return null
+  }
+
+
+  # sometimes if channel is 20A_1, the teen numbers get picked up -
+  #signal <- tabular_content %>% select(contains(channel)) %>% select(-contains("-")) %>% select(1) %>%
+  #  slice(.,woi$From:woi$To ) * raw_ecg_gain
+
+  signal <- tabular_content %>% select(contains(channel)) %>% select(-contains("-")) %>% select(1) * raw_ecg_gain
+
+  #standardising column name irrespective of channel name
+  signal <- signal %>% rename(.,"signal_data" = names(signal))
+  return(signal)
+}
+
 get_raw_signal_data <- function(WaveFront, Catheter_Type, Point_Number) {
 
   woi <- find_window(WaveFront,Catheter_Type,Point_Number)
@@ -260,7 +302,8 @@ retrieve_all_signals <- function(sheep_name) {
   LabelledSignalData <- LabelledSignalData %>% rowwise() %>%
    mutate(signal = list(get_signal_data(WaveFront, Catheter_Type, Point_Number)),
            rawsignal = list(get_raw_signal_data(WaveFront, Catheter_Type, Point_Number)),
-          signal_unipolar = list(get_signal_unipolar_data(WaveFront, Catheter_Type, Point_Number)))
+          signal_unipolar = list(get_signal_unipolar_data(WaveFront, Catheter_Type, Point_Number)),
+          raw_unipolar = list(get_raw_signal_unipolar_data(WaveFront, Catheter_Type, Point_Number)))
 
 
   # bring extra woi data only if there is a signal
