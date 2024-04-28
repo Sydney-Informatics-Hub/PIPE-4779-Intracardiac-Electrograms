@@ -129,9 +129,9 @@ def preprocess_rawsignal(outpath = '../results',
     df.to_parquet(os.path.join(outpath, fname_out), index=False)
 
 
-def preprocess_rawsignal_singlefile(infname_parquet, 
-               inpath,
-               signal='raw_unipolar'):
+def preprocess_rawsignal_singlefile(inpath,
+                                    infname_parquet, 
+                                    signal='raw_unipolar'):
     """
     Ths preprocess function reads in data from a single file and preprocess data.
     The data is then saved to a parquet file to further use in timeseries modeling such as with TSAI.
@@ -139,15 +139,12 @@ def preprocess_rawsignal_singlefile(infname_parquet,
 
     Parameters
     ----------
-    outpath : str
-        Path to the output folder
-    infname_parquet : str
-        Name of the input file ()
     inpath : str
         Path to the data
-    fname_out : str
-        Name of the output file
-    signal: 'signal', 'rawsignal', 'signal_unipolar', 'raw_unipolar',
+    infname_parquet : str
+        Name of the input file ()
+    signal: str, 
+        e.g. 'signal', 'rawsignal', 'signal_unipolar', 'raw_unipolar',
     """
     usecols = ['Point_Number',
                 'WaveFront',
@@ -176,6 +173,6 @@ def preprocess_rawsignal_singlefile(infname_parquet,
     dfnew['intramural_scar'] = dfnew['intramural_scar'].astype(int)
     dfnew['epicardial_scar'] = dfnew['epicardial_scar'].astype(int)
     dfnew['Point_Number'] = dfnew['sheep'].astype(str) + '_' + dfnew['Point_Number'].astype(str)
-    fname_out = infname_parquet.replace('.parquet', '_clean.parquet')
+    fname_out = infname_parquet.replace('.parquet', f'_{signal}_clean.parquet')
     dfnew.to_parquet(os.path.join(inpath, fname_out), index=False)
     print(f'File {fname_out} saved to {inpath}')
