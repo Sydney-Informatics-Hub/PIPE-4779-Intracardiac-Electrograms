@@ -74,7 +74,7 @@ def preprocess_rawsignal(outpath = '../results',
                signal='raw_unipolar'):
     """
     The preprocess function reads in all data of list_fnames_parquet as dataframe and concatenates them.
-    The data is then saved to a csv file.
+    The data is then saved to a parquet file to further use in timeseries modeling such as with TSAI.
 
     Parameters
     ----------
@@ -127,3 +127,55 @@ def preprocess_rawsignal(outpath = '../results',
     os.makedirs(outpath, exist_ok=True)
     # save as parquet
     df.to_parquet(os.path.join(outpath, fname_out), index=False)
+
+
+def preprocess_rawsignal_singlefile(infname_parquet, 
+               inpath,
+               signal='raw_unipolar'):
+    """
+    Ths preprocess function reads in data from a single file and preprocess data.
+    The data is then saved to a parquet file to further use in timeseries modeling such as with TSAI.
+    The output file (with ending '_clean.parquet') is saved in the same folder as the input file.
+
+    Parameters
+    ----------
+    outpath : str
+        Path to the output folder
+    infname_parquet : str
+        Name of the input file ()
+    inpath : str
+        Path to the data
+    fname_out : str
+        Name of the output file
+    signal: 'signal', 'rawsignal', 'signal_unipolar', 'raw_unipolar',
+    """
+    usecols = ['Point_Number',
+                'WaveFront',
+                'sheep',
+                signal,
+                'endocardium_scar',
+                'intramural_scar',
+                'epicardial_scar']
+
+    file = os.path.join(inpath, infname_parquet)
+    # check if file exists
+    if not os.path.isfile(file):
+        raise FileNotFoundError(f'File {file} not found')
+    dfnew = pd.read_parquet(file, columns=usecols)
+    # explode rawsignal column
+    dfnew = dfnew.explode(signal)
+    dfnew[signal] = dfnew[signal].apply(lambda x: x['signal_data'] if isinstance(x, dict) and 'signal_data' in x else None)
+    # remove nan values
+    dfnew = dfnew.dropna()
+    # modify point number to avoid duplication
+    # rename column signal to 'signal_data'
+    dfnew = dfnew.rename(columns={signal: 'signal_data'})
+    # convert to int
+    dfnew['Point_Number'] = dfnew['Point_Number'].astype(int)
+    dfnew['endocardium_scar'] = dfnew['endocardium_scar'].astype(int)
+    dfnew['intramural_scar'] = dfnew['intramural_scar'].astype(int)
+    dfnew['epicardial_scar'] = dfnew['epicardial_scar'].astype(int)
+    dfnew['Point_Number'] = dfnew['sheep'].astype(str) + '_' + dfnew['Point_Number'].astype(str)
+    fname_out = infname_parquet.replace('.parquet', '_clean.parquet')
+    dfnew.to_parquet(os.path.join(inpath, fname_out), index=False)
+    print(f'File {fname_out} saved to {inpath}')
