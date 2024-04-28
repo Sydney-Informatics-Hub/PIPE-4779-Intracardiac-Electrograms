@@ -3,10 +3,12 @@
 This classifier uses InceptionTime, which is an ensemble of five deep Convolutional Neural Network (CNN) models for TSC.
 The implementation leverages the python package tsai: https://timeseriesai.github.io/tsai
 
+TSAI assumes that the input data is pre-processed (see preprocessing functions in combinedata.py) and contains ECG signals for different wavefronts and target labels.
+
 The input data is expected to be in csv or parquet format and should contain the following columns:
 - Point_Number: Unique identifier for each data point
 - WaveFront: 'LVp', 'RVp', or 'SR'
-- signal_data: ECG signal data
+- signal_data: ECG signal data as float values
 and the columns for the target labels, e.g.:
 - scar: 1 if there is a scar, 0 otherwise
 - endocardium_scar: 1 if there is an endocardial scar, 0 otherwise
@@ -379,8 +381,9 @@ def test_tsai(wavefront, target, inpath, fname_csv):
 def test_all():
     inpath = '../results'
     #fname_csv = 'NestedDataAll_clean.csv'
-    fname_csv = 'NestedDataAll_rawsignal_clean.parquet'
-    outpath = '../results/tsai_test_all'
+    #fname_csv = 'NestedDataAll_rawsignal_clean.parquet'
+    fname_csv = 'NestedDataAll_rawsignal_unipolar.parquet'
+    outpath = '../results/tsai_test_raw_unipolar'
     run_all(inpath, 
         fname_csv, 
         outpath,
