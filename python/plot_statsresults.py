@@ -6,7 +6,8 @@ import seaborn as sns
 # Load the CSV file
 #file_path = '../results/statresults_comb.csv'
 #file_path = '../results/tsai/20240410_163628/results_stats_all.csv'
-file_path = '../results/tsai/results_stats_comp_CNN.csv'
+#file_path = '../results/tsai/results_stats_comp_CNN.csv'
+file_path = '../results/results_stats_comp_rawsignal.csv'
 data = pd.read_csv(file_path)
 output_path = '../results/tsai/'
 
