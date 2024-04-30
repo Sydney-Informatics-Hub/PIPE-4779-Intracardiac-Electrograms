@@ -2,8 +2,13 @@
 # but for checking and on request.
 library(here)
 library(tidyverse)
+library(arrow)
 source("paths.R")
 get_paths()
+
+#output of combine_data.py versus output of post_aggregation
+df <- read_parquet(here::here("results","NestedDataAll_rawsignal_clean.parquet"))
+df2 <- read_parquet(here::here("data","generated","publishable_model_data_TSAI.parquet"))
 
 data_type <- "filtered"
 
