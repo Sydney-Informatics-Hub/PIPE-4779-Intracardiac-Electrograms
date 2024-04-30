@@ -2,8 +2,13 @@
 # but for checking and on request.
 library(here)
 library(tidyverse)
+library(arrow)
 source("paths.R")
 get_paths()
+
+#output of combine_data.py versus output of post_aggregation
+df <- read_parquet(here::here("results","NestedDataAll_rawsignal_clean.parquet"))
+df2 <- read_parquet(here::here("data","generated","publishable_model_data_TSAI.parquet"))
 
 data_type <- "filtered"
 
@@ -26,8 +31,8 @@ write_csv(data_tsfresh, file = here::here(generated_data_path,paste0("ts_all_fea
 
 # Publishable data without any assumption on features.
 
-#data_type <- "filtered"
-data_type <- "imputed"
+data_type <- "filtered"
+#data_type <- "imputed"
 
 model_data <- readRDS(file = here::here(generated_data_path,paste0(data_type,"_aggregate_data.rds")))
 
