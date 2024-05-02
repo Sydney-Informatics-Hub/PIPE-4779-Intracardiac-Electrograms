@@ -300,23 +300,60 @@ class TSai:
                 f.write(class_report)
         return (accuracy, precision, auc, mcc)
 
-    def predict(self, X, reload_model_from_path=None, path_model=None):
+    def predict(self, X, path_model):
         """
         Predict the labels for the given signals using the trained classifier.
+        The filename of the model needs to include the target name and wavefront name.
 
         Args:
             X (np.array): Array of signals
-            load_model_from_path (str): Path to the trained model to reload (optional, default: None)
-            path_model (str): Path to save the trained model (optional, default: None)
+            path_model (str): Path to save the trained model 
         
         Returns:
             np.array: Array of predicted labels
             np.array: Array of predicted probabilities
 
         """
-        if (reload_model_from_path is not None) and (path_model is not None):
-            self.clf = load_learner(path_model)
-        probas, _, preds = self.clf.get_X_preds(X)
+        clf = load_learner(path_model)
+        probas, _, preds = clf.get_X_preds(X)
+        return preds, probas
+    
+    def predict_from_file(self, path_data, path_model):
+        """
+        Predict the labels for the given dataframe file using the trained classifier.
+        The filename of the model needs to include the target name and wavefront name.
+
+        Args:
+            path_data (str): Path/filename to the input data
+            path_model (str): Path/filename to the trained model
+
+        Returns:
+            np.array: Array of predicted labels
+            np.array: Array of predicted probabilities
+
+        """
+        df = self.load_data(path_data)
+        column_names = list(df)
+        fname_model = os.path.basename(path_model)
+
+        # Check if model filename is valid, need to include at least 3 underscores and end with .pkl
+        if fname_model.count('_') < 2 or not fname_model.endswith('.pkl'):
+            raise ValueError(f'Model file name {fname_model} not valid. Must include at least 2 underscores and end with .pkl')
+        # Try to extract wavefront and target name from filename (e.g.: clf_AtLeastIntra_RVp_120epochs.pkl)
+        target = fname_model.split('_')[1]
+        wavefront = fname_model.split('_')[2]
+        # check that waveforint is either LVp, RVp or SR
+        if wavefront not in ['LVp', 'RVp', 'SR']:
+            raise ValueError(f'Wavefront name {wavefront} in model file not recognized. Must be LVp, RVp, or SR') 
+        # check that target name is in column names
+        if target not in column_names:
+            raise ValueError(f'Target name {target} in model file not found in dataframe columns')
+        print(f'Loaded {len(df)} datapoints from file.')
+        print(f'Extracting signal data for wavefront {wavefront} and target {target}...')
+        X, y = self.df_to_ts(df, wavefront, target)
+        print(f'Predicting labels and probabilities for {len(X)} signals...')
+        preds, probas = self.predict(X, path_model)  
+        print('Predictions done.')  
         return preds, probas
     
     
@@ -389,7 +426,7 @@ def test_all():
         outpath,
         target_list = ['NoScar', 'AtLeastEndo', 'AtLeastIntra', 'epiOnly'],
         method = 'CNN')
-
+    
 
 if __name__ == '__main__':
     inpath = input("Enter the path to the input data: ")
