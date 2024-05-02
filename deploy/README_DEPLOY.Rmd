@@ -1,0 +1,26 @@
+---
+title: "Readme_Deploy"
+author: "Kristian Maras"
+date: "2024-05-02"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Deploy Predictions on a Carto Export
+
+The **/deploy** subfolder within this git repository is dedicated to running predictions on carto export files. This pipeline injests carto files (version 7) and then runs predictions on this data injest based on pre-trained dataset. The final output will then convert these predictions to vtk files which can be mapped on a mesh for visual inspection of the location of predicted scar tissue.
+
+Subfolders within /deploy consist of:
+
+  **/data**: Will hold the result of data_ingest.R which injests carto files, the unipolar signals and point        geometries into a single parquet file. This file will be used by the python TSAI models that were trained to  predict scars.
+  
+  **/data/Export_Analysis**: Where the carto files need to be stored.
+  
+  **/models**: Store for trained TSAI Models neccessary for predictions
+  
+  **/scripts**: Both python and R scripts neccessary for deploy prediction pipeline
+
+...to continue 

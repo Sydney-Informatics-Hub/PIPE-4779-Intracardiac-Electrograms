@@ -1,7 +1,9 @@
-# Deployment version of aggregating_data focused to collect unipolar raw signals
-# run data_injest() function
-# it will save the parquet file neccessary for python and allow you to inpect the dataframe
-# assumes catheter type is "Penta"
+# run data_injest() function in Rstudio
+# or Rscript data_injest.R from command line
+
+# Will save the parquet file in /deploy/data/data_injest.parquet
+
+
 library(here)
 library(tidyverse)
 library(arrow)
@@ -10,33 +12,33 @@ deploy_data_path <- here::here("deploy","data")
 
 data_injest <- function() {
   data <- collect_data("Penta")
-  #can do checks if needed
 }
 collect_data <- function(Catheter_Type) {
   # Catheter_Type <- "Penta"
-  template <- get_template(Catheter_Type) %>% head(5)
+  template <- get_template(Catheter_Type)
 
   template <- template %>% rowwise() %>%
     mutate(signal_data = list(get_raw_signal_unipolar_data(WaveFront, Catheter_Type, Point_Number)))
-  template <- template %>% select(paths, everything())
+  template <- template %>% select(paths, everything()) %>% mutate(Point_Number = as.integer(Point_Number))
   print("finished reading signals...")
 
-  wavefronts_collected <- template %>% distinct(WaveFront) #usually on LVp RVp and SR
+  wavefronts_collected <- template %>% distinct(WaveFront) #usually on LVp RVp and SR but not always
 
-  for (wave in wavefronts_collected){
-    all_geometries <- get_geometry(wave,Catheter_Type) %>% bind_rows()
-  }
+  # for each wavefront collect and rowbind geometry
+  all_geometries <- map_df(wavefronts_collected$WaveFront, ~ get_geometry(.x,Catheter_Type))
 
-
+  #merge geometry info with signal data
+  signals <- right_join(x = all_geometries,y = template,by = join_by(Catheter_Type,WaveFront,Point_Number))
   parquet_file <- here::here(deploy_data_path,paste0("data_injest.parquet"))
-  write_parquet(template, parquet_file)
-
+  write_parquet(signals, parquet_file)
+  print("finished combing geometries...")
+  #df <- arrow::read_parquet(here::here(deploy_data_path,paste0("data_injest.parquet")))
   return(template)
 
 }
 
 # produces dataframe with WaveFront, Catheter_Type, Point_Number combinations given the
-# Export analysis folder in deploy_data_path
+# signals that need to be injested based on Export analysis folder in deploy_data_path
 get_template <- function(Catheter_Type) {
   df <- tibble(files = list.files(path = here::here("deploy","data","Export_Analysis"),
              pattern = "_ECG_Export.txt",
@@ -53,10 +55,9 @@ get_template <- function(Catheter_Type) {
 
 }
 
+# read the signal information
+# Assumes rows where the data starts is constant.
 get_raw_signal_unipolar_data <- function(WaveFront, Catheter_Type, Point_Number) {
-  # read the signal information
-  # Assumes rows where the data starts is constant.
-
   txt_file <- find_signal_file(WaveFront,Catheter_Type,Point_Number)
   tabular_content <-  read_table(txt_file, skip = 3)
   raw_ecg_gain <- str_extract(read_lines(txt_file,n_max = 4), "^Raw ECG to MV \\(gain\\) = ([0-9.]+)$") %>%
@@ -92,12 +93,13 @@ find_signal_file <- function(WaveFront, Catheter_Type, Point_Number) {
   matching_file <- list.files(path = here::here(deploy_data_path,"Export_Analysis"),
                               pattern = pattern, full.names = TRUE)
 
-  #"9-1-1-ReLV LVp Penta_P10_ECG_Export.txt"
   return(matching_file)
 
 }
 
+
 get_geometry <- function(WaveFront,Catheter_Type) {
+
   pattern <- sprintf(".*%s %s_car\\.txt$", WaveFront, Catheter_Type)
   matching_file <- list.files(path = here::here(deploy_data_path,"Export_Analysis"),
                               pattern = pattern, full.names = TRUE)
@@ -108,3 +110,4 @@ get_geometry <- function(WaveFront,Catheter_Type) {
 
 }
 
+data_injest()
