@@ -13,7 +13,7 @@
 
 <meta name="date" content="2024-05-02" />
 
-<title>Readme_Deploy</title>
+<title>ReadMe for Deploying Predictions on Carto Export</title>
 
 <script>// Pandoc 2.9 adds attributes on both header and div. We remove the former (to
 // be compatible with the behavior of Pandoc < 2.8).
@@ -350,15 +350,33 @@ display: none;
 
 
 
-<h1 class="title toc-ignore">Readme_Deploy</h1>
+<h1 class="title toc-ignore">ReadMe for Deploying Predictions on Carto
+Export</h1>
 <h4 class="author">Kristian Maras</h4>
 <h4 class="date">2024-05-02</h4>
 
 </div>
 
 
-<div id="deploy-predictions-on-a-carto-export" class="section level2">
-<h2>Deploy Predictions on a Carto Export</h2>
+<div id="steps-for-deploying-predictions-on-carto-export" class="section level2">
+<h2>Steps for Deploying Predictions on Carto Export</h2>
+<ol style="list-style-type: decimal">
+<li><p>Put contents of Carto Export into the
+<code>/deploy/data/Export_Analysis</code> folder</p></li>
+<li><p>Run <code>Rscript data_injest.R</code> located in
+<code>/deploy/scripts</code> which will create a file called
+<code>data_injest.parquet</code> in the <code>/deploy/data</code>
+folder</p></li>
+<li><p>Run the python script <strong>XXXX</strong> that uses models
+saved in <code>/deploy/models/dependent</code> to make predictions on
+the signal_data housed in data_injest.parquet (ideally adds 3 extra
+columns on the data_injest_parquet that represent certainty of scar on
+each layer)</p></li>
+<li><p>To be continued…..</p></li>
+</ol>
+</div>
+<div id="description" class="section level2">
+<h2>Description</h2>
 <p>The <strong>/deploy</strong> subfolder within this git repository is
 dedicated to running predictions on carto export files. This pipeline
 injests carto files (version 7) and then runs predictions on this data
@@ -373,7 +391,13 @@ that were trained to predict scars.</p>
 <p><strong>/data/Export_Analysis</strong>: Where the carto files need to
 be stored.</p>
 <p><strong>/models</strong>: Store for trained TSAI Models neccessary
-for predictions</p>
+for predictions. Specifically the <code>independent</code> subfolder
+houses models whose labels to identify scars in the 3 layerswere defined
+on the at <strong>least level</strong> definition during training. This
+will be used by clinitions during cathetar ablations. The
+<code>dependent</code> subfolder houses models whose labels used to
+identify scars in the 3 layers were defined on an independent basis.
+This will be used to compare human MRI meshes.</p>
 <p><strong>/scripts</strong>: Both python and R scripts neccessary for
 deploy prediction pipeline</p>
 <p>…to continue</p>

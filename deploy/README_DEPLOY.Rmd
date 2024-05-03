@@ -1,5 +1,5 @@
 ---
-title: "Readme_Deploy"
+title: "ReadMe for Deploying Predictions on Carto Export"
 author: "Kristian Maras"
 date: "2024-05-02"
 output: html_document
@@ -9,7 +9,18 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## Deploy Predictions on a Carto Export
+## Steps for Deploying Predictions on Carto Export
+
+1. Put contents of Carto Export into the `/deploy/data/Export_Analysis` folder
+
+2. Run `Rscript data_injest.R` located in `/deploy/scripts` which will create a file called `data_injest.parquet` in the `/deploy/data` folder
+
+3. Run the python script **XXXX** that uses models saved in `/deploy/models/dependent` to make predictions on the signal_data housed in data_injest.parquet (ideally adds 3 extra columns on the data_injest_parquet that represent certainty of scar on each layer)
+
+4. To be continued.....
+
+
+## Description
 
 The **/deploy** subfolder within this git repository is dedicated to running predictions on carto export files. This pipeline injests carto files (version 7) and then runs predictions on this data injest based on pre-trained dataset. The final output will then convert these predictions to vtk files which can be mapped on a mesh for visual inspection of the location of predicted scar tissue.
 
@@ -19,7 +30,7 @@ Subfolders within /deploy consist of:
   
   **/data/Export_Analysis**: Where the carto files need to be stored.
   
-  **/models**: Store for trained TSAI Models neccessary for predictions
+  **/models**: Store for trained TSAI Models neccessary for predictions. Specifically the `independent` subfolder houses models whose labels to identify scars in the 3 layerswere defined on the at **least level** definition during training. This will be used by clinitions during cathetar ablations. The `dependent` subfolder houses models whose labels used to identify scars in the 3 layers were defined on an independent basis. This will be used to compare human MRI meshes.
   
   **/scripts**: Both python and R scripts neccessary for deploy prediction pipeline
 
