@@ -4,18 +4,24 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 from pathlib import Path
 import re
+import time
+import argparse
 
 # Setting up the path
-#deploy_data_path = Path("../../data/deploy/data")
 deploy_data_path = Path("../../../data/deploy/data/Export_Analysis")
+export_analysis_path =  Path("../../../data/deploy/data")
+wavefront_selected = "Penta"
+
 # Ensures the directory exists
 if not deploy_data_path.exists():
     raise FileNotFoundError(f"Directory {deploy_data_path} does not exist.")
-export_analysis_path = deploy_data_path
+os.makedirs(export_analysis_path, exist_ok=True)
+
 
 def collect_data(catheter_type):
     """
     Function to collect data based on Catheter_Type
+
     """
     template = get_template(catheter_type)
     #template['signal_data'] = template.apply(lambda row: get_raw_signal_unipolar_data(row['WaveFront'], catheter_type, row['Point_Number']), axis=1)
@@ -35,10 +41,10 @@ def collect_data(catheter_type):
 
     # Merging geometry info with signal data
     signals = all_geometries.merge(template, on=['Catheter_Type', 'WaveFront', 'Point_Number'], how='right')
-    parquet_file = deploy_data_path / "data_injest.parquet"
-    pq.write_table(pa.Table.from_pandas(signals), parquet_file)
-    print("finished combing geometries...")
-    return template
+    parquet_file = export_analysis_path / "data_injest.parquet"
+    # save as parquet file
+    signals.to_parquet(parquet_file, index=False)
+    print("Finished.")
 
 
 def get_template(catheter_type):
@@ -47,11 +53,11 @@ def get_template(catheter_type):
     given the signals that need to be ingested based on Export analysis folder in deploy_data_path.
     """
     # List all files matching the pattern '_ECG_Export.txt'
-    files = [f for f in os.listdir(export_analysis_path) if '_ECG_Export.txt' in f]
+    files = [f for f in os.listdir(deploy_data_path) if '_ECG_Export.txt' in f]
     
     # Create a DataFrame from the files
     df = pd.DataFrame({'files': files})
-    df['paths'] = df['files'].apply(lambda x: os.path.join(export_analysis_path, x))
+    df['paths'] = df['files'].apply(lambda x: os.path.join(deploy_data_path, x))
     
     # Extract Point_Number from filenames
     df['Point_Number'] = df['files'].str.extract(r'.*P(\d+).*')[0]
@@ -72,17 +78,6 @@ def get_raw_signal_unipolar_data(wavefront, catheter_type, point_number):
     #tabular_content = pd.read_csv(txt_file, skiprows=3, delim_whitespace=True) 
     tabular_content = pd.read_csv(txt_file, skiprows=3, sep='\s+')
 
-    # read txt file 
-    # Extracting the raw ECG gain from the fourth line of the file
-    #with open(txt_file, 'r') as file:
-    #    lines = file.readlines()
-    #gain_line = next((line for line in lines[:4] if "Raw ECG to MV (gain) =" in line), None)
-    #if gain_line:
-    #    raw_ecg_gain = float(re.search(r"Raw ECG to MV \(gain\) = ([0-9.]+)", gain_line).group(1))
-    #else:
-    #    return None  # Return None if gain is not found
-
-
     with open(txt_file, 'r') as file:
         next(file)  # Skip the first line
         gain_line = next(file)  # Get the second line
@@ -100,13 +95,6 @@ def get_raw_signal_unipolar_data(wavefront, catheter_type, point_number):
     else:
         return None  # Return None if channel information is not found
 
-    # Selecting the relevant channel data and applying the gain factor
-    # if channel in tabular_content.columns:
-    #     signal = tabular_content[[channel]].apply(lambda x: x * raw_ecg_gain)
-    #     signal.rename(columns={channel: 'signal_data'}, inplace=True)
-    #     return signal
-    # else:
-    #     return None
     
     column_name = next((col for col in tabular_content.columns if channel in col), None)
     if column_name:
@@ -116,8 +104,6 @@ def get_raw_signal_unipolar_data(wavefront, catheter_type, point_number):
     else:
         return None
 
-# Example usage
-# signal_data = get_raw_signal_unipolar_data('WaveFrontX', 'TypeY', 1)
 
 
 def find_signal_file(wavefront, catheter_type, point_number):
@@ -148,4 +134,10 @@ def get_geometry(wavefront, catheter_type):
             return tabular_content
     return None
 
-data = collect_data("Penta")
+
+if __name__ == '__main__':
+    # ToDo: add cl arguments for deploy_data_path and export_analysis_path abd wavefront_selected
+    # compute time
+    now = time.time()
+    collect_data(wavefront_selected)
+    print(f'Compute time: {round((time.time() - now)/60,2)} mins')
