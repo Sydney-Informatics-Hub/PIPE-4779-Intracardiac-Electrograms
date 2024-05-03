@@ -321,10 +321,13 @@ class TSai:
     def predict_from_file(self, path_data, path_model):
         """
         Predict the labels for the given dataframe file using the trained classifier.
-        The filename of the model needs to include the target name and wavefront name.
+        The filename of the model needs to include the  wavefront name.
 
         Args:
-            path_data (str): Path/filename to the input data
+            path_data (str): Path/filename to the input data, including columns:
+                'Point_Number', 
+                'WaveFront', 
+                'signal_data', 
             path_model (str): Path/filename to the trained model
 
         Returns:
@@ -332,7 +335,22 @@ class TSai:
             np.array: Array of predicted probabilities
 
         """
-        df = self.load_data(path_data)
+        usecols = [
+            'Point_Number',
+            'WaveFront',
+            'signal_data'
+        ]
+        # check if file exists
+        if not os.path.isfile(\path_data):
+            raise FileNotFoundError(f'File {path_data} not found in')
+        # check if file exists and csv
+        if path_data.endswith('.csv'):
+            df = pd.read_csv(path_data, usecols=usecols)
+        elif path_data.endswith('.parquet'):
+            df = pd.read_parquet(path_data, columns=usecols)
+        else:
+            raise ValueError(f'File {path_data} is not a csv or parquet file')
+        
         column_names = list(df)
         fname_model = os.path.basename(path_model)
 
@@ -342,17 +360,15 @@ class TSai:
         # Try to extract wavefront and target name from filename (e.g.: clf_AtLeastIntra_RVp_120epochs.pkl)
         target = fname_model.split('_')[1]
         wavefront = fname_model.split('_')[2]
-        # check that waveforint is either LVp, RVp or SR
+        # check that wavefront is either LVp, RVp or SR
         if wavefront not in ['LVp', 'RVp', 'SR']:
             raise ValueError(f'Wavefront name {wavefront} in model file not recognized. Must be LVp, RVp, or SR') 
-        # check that target name is in column names
-        if target not in column_names:
-            raise ValueError(f'Target name {target} in model file not found in dataframe columns')
-        print(f'Loaded {len(df)} datapoints from file.')
-        print(f'Extracting signal data for wavefront {wavefront} and target {target}...')
+        #print(f'Loaded {len(df)} datapoints from file.')
+        print(f'Extracting signal data for wavefront {wavefront}')
         X, y = self.df_to_ts(df, wavefront, target)
         print(f'Predicting labels and probabilities for {len(X)} signals...')
         preds, probas = self.predict(X, path_model)  
+        # Adding coordinates
         print('Predictions done.')  
         return preds, probas
     
