@@ -4,10 +4,20 @@ import os
 import pandas as pd
 import numpy as np
 import logging
+
+# for preprocessing:
+from aggregating_data import retrieve_signal
+from combinedata import preprocess_rawsignal_singlefile
+# for inference with tsai model:
 from classifier_tsai import TSai
 
 # Settings
 data_dir = 'data'
+fname_data = 'data.csv'
+path_model = 'model'
+output_dir = '../../results/inference/'
+
+
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -23,7 +33,7 @@ def preprocess_data(data_dir):
     pass
 
 
-def classify_ecg(model, datafile, save_reults=False):
+def classify_ecg(model, path_data, fname_data, path_model, save_results=False):
     """
     Classify ECG data with TSai model
 
@@ -31,8 +41,13 @@ def classify_ecg(model, datafile, save_reults=False):
         - y_pred: predicted class labels
         - y_proba: predicted probabilities
     """
-    #tsai = TSai()
-    pass
+    # 
+    tsai = TSai(path_data, fname_data)
+    y_pred, y_proba = tsai.predict_from_file(os.path.join(path_data, fname_data), path_model)
+    if save_results:
+        # save y_pred and y_proba to csv file
+        df = pd.DataFrame({'labels_pred': y_pred, 'labels_proba': y_proba})
+    
 
 
 def postprocess_data(labels_points, proba_points, meshfile_ref):
