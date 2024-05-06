@@ -64,7 +64,7 @@ class DataIngest:
         # drop path columns and name filename to path
         signals.drop(columns=['paths'], inplace=True)
         # write parquet outfname
-        self.filename_output = f"preprocessed_rawsignal_unipolar_{self.catheter_type.lower}.parquet"
+        self.filename_output = f"preprocessed_rawsignal_unipolar_{self.catheter_type.lower()}.parquet"
         # Write to parquet file
         parquet_file = self.export_analysis_path / self.filename_output
         # save as parquet file
