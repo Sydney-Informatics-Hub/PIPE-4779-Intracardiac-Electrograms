@@ -6,7 +6,8 @@ import numpy as np
 import logging
 
 # for preprocessing:
-from aggregating_data import retrieve_signal
+#from aggregating_data import retrieve_signal
+from data_injest import DataIngest
 from combinedata import preprocess_rawsignal_singlefile
 # for inference with tsai model:
 from classifier_tsai import TSai
@@ -17,25 +18,44 @@ fname_data = 'data.csv'
 path_model = 'model'
 output_dir = '../../results/inference/'
 
+catheter_type = "Penta"
+
 
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
 
 
-def preprocess_data(data_dir):
+def preprocess_data(data_dir, output_dir, catheter_type):
     """
     Preprocess data for inference, including:
         - loading data
         - cleaning and filtering  data
         - converting to ML-ready format (TSai)
+
+    Input:
+        - data_dir: path to raw data
+        - output_dir: path to save preprocessed data
+        - catheter_type: type of catheter used for data collection
+
+    Returns:
+        - path to preprocessed data
     """
-    pass
+    data_ingest = DataIngest(data_dir, output_dir, catheter_type)
+    data_ingest.collect_data()
+    filename_output = data_ingest.filename_output 
+    return os.path.join(output_dir, filename_output)
 
 
-def classify_ecg(model, path_data, fname_data, path_model, save_results=False):
+def classify_ecg(model, path_data, path_model, save_results=False):
     """
     Classify ECG data with TSai model
+
+    Input:
+        - model: TSai model
+        - path_data: path to preprocessed data
+        - path_model: list of to model
+        - save_results: flag to save results to file
 
     Returns:
         - y_pred: predicted class labels
@@ -44,6 +64,7 @@ def classify_ecg(model, path_data, fname_data, path_model, save_results=False):
     # 
     tsai = TSai(path_data, fname_data)
     y_pred, y_proba = tsai.predict_from_file(os.path.join(path_data, fname_data), path_model)
+    # get coordinates of points
     if save_results:
         # save y_pred and y_proba to csv file
         df = pd.DataFrame({'labels_pred': y_pred, 'labels_proba': y_proba})
