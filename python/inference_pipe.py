@@ -13,9 +13,10 @@ from combinedata import preprocess_rawsignal_singlefile
 from classifier_tsai import TSai
 
 # Settings
-data_dir = 'data'
+raw_data_path = "../../../data/deploy/data/Export_Analysis"
+export_analysis_path =  "../../../data/deploy/data"
 fname_data = 'data.csv'
-path_model = 'model'
+path_model = 'models'
 output_dir = '../../results/inference/'
 
 catheter_type = "Penta"
@@ -62,12 +63,14 @@ def classify_ecg(model, path_data, path_model, save_results=False):
         - y_proba: predicted probabilities
     """
     # 
-    tsai = TSai(path_data, fname_data)
-    y_pred, y_proba = tsai.predict_from_file(os.path.join(path_data, fname_data), path_model)
+    #path_data =  "../../../data/deploy/data/preprocessed_rawsignal_unipolar_penta.parquet"
+    #path_model = "./models/clf_NoScar_SR_120epochs.pkl"
+
+    tsai = TSai('','')
+    dfres = tsai.predict_from_file(path_data, path_model)
     # get coordinates of points
     if save_results:
-        # save y_pred and y_proba to csv file
-        df = pd.DataFrame({'labels_pred': y_pred, 'labels_proba': y_proba})
+        dfres.to_csv(os.path.join(output_dir, 'predictions.csv'), index=False)
     
 
 

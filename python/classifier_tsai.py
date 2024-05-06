@@ -322,38 +322,50 @@ class TSai:
         """
         Predict the labels for the given dataframe file using the trained classifier.
         The filename of the model needs to include the  wavefront name.
+        The data needs to include the following columns: 'Point_Number', 'WaveFront', 'signal'
+        The signal is expected to be a list of 2500 floats for each row
 
         Args:
             path_data (str): Path/filename to the input data, including columns:
                 'Point_Number', 
                 'WaveFront', 
-                'signal_data', 
+                'signal', 
             path_model (str): Path/filename to the trained model
 
         Returns:
             np.array: Array of predicted labels
             np.array: Array of predicted probabilities
+            np.array: Array of Point_Numbers
 
         """
-        usecols = [
-            'Point_Number',
-            'WaveFront',
-            'signal_data'
-        ]
+        use_cols = ['Point_Number', 'WaveFront', 'signal']
         # check if file exists
-        if not os.path.isfile(\path_data):
+        if not os.path.isfile(path_data):
             raise FileNotFoundError(f'File {path_data} not found in')
         # check if file exists and csv
         if path_data.endswith('.csv'):
-            df = pd.read_csv(path_data, usecols=usecols)
+            df = pd.read_csv(path_data, usecols=use_cols)
         elif path_data.endswith('.parquet'):
-            df = pd.read_parquet(path_data, columns=usecols)
+            df = pd.read_parquet(path_data, columns=use_cols)
         else:
             raise ValueError(f'File {path_data} is not a csv or parquet file')
         
+        ## Preprocessing to tsai format
+        
+        len_before = len(df)
+        # remove duplicate entries that have same Point_Number and WaveFront
+        df = df.drop_duplicates(subset = ['Point_Number', 'WaveFront'])
+        if len(df) < len_before:
+            print(f'Removed {len_before - len(df)} duplicate entries.')
+        # check if signal_data is in the columns
+        df = df.explode(column = 'signal', ignore_index=True)
+        # remove nan values
+        df = df.dropna()
+        # add column "time" to df which starts at 0 and has the same length as "signal_data" for each Point_Number and WaveFront
+        df['time'] =df.groupby(['Point_Number', 'WaveFront']).cumcount()
+
         column_names = list(df)
         fname_model = os.path.basename(path_model)
-
         # Check if model filename is valid, need to include at least 3 underscores and end with .pkl
         if fname_model.count('_') < 2 or not fname_model.endswith('.pkl'):
             raise ValueError(f'Model file name {fname_model} not valid. Must include at least 2 underscores and end with .pkl')
@@ -364,13 +376,31 @@ class TSai:
         if wavefront not in ['LVp', 'RVp', 'SR']:
             raise ValueError(f'Wavefront name {wavefront} in model file not recognized. Must be LVp, RVp, or SR') 
         #print(f'Loaded {len(df)} datapoints from file.')
+
         print(f'Extracting signal data for wavefront {wavefront}')
-        X, y = self.df_to_ts(df, wavefront, target)
+        df = df[df['WaveFront'] == wavefront][['Point_Number', 'time', 'signal']]
+        points = df['Point_Number'].unique()
+        npoints = len(points)
+        # get length of signal_data for each point
+        signal_length = df.groupby('Point_Number')['signal'].apply(len)
+        # check that all signals have the same length with length =2500
+        signal_length_max = 2500
+        if not all(signal_length == signal_length_max):
+            raise ValueError(f'All signals must have the same length of 2500. Found signal lengths: {signal_length.unique()}')
+        X = np.zeros((npoints, signal_length_max))
+        #aggregate 'signal' directly 
+        aggregated_data = df.groupby('Point_Number')['signal'].agg(list)
+        for i, point in enumerate(points):
+            data = np.array(aggregated_data[point])
+            X[i, :len(data)] = data
+        X= X.reshape((len(X), 1, -1))
+
         print(f'Predicting labels and probabilities for {len(X)} signals...')
         preds, probas = self.predict(X, path_model)  
         # Adding coordinates
         print('Predictions done.')  
-        return preds, probas
+        dfres = pd.DataFrame({'Point_Number': points, 'prediction': preds, 'probability': probas[:,1], 'WaveFront': wavefront, 'target': target})
+        return dfres
     
     
 
