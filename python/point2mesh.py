@@ -27,7 +27,7 @@ class MeshDataMapper:
         vtk_meta_text: Text to add to the second line of the VTK file.
     
     """
-    def __init__(self, path_data_export. mesh_file, point_data_file, fname_out, vtk_meta_text=""):
+    def __init__(self, path_data_export, mesh_file, point_data_file, fname_out, vtk_meta_text=""):
         self.mesh_file = mesh_file
         self.point_data_file = point_data_file
         self.path_data_export = path_data_export
@@ -57,7 +57,7 @@ class MeshDataMapper:
     def read_point_data(self):
         """Reads a Parquet file containing X, Y, Z coordinates and 'prediction' data."""
         df_pred = pd.read_parquet(self.point_data_file)
-        print("Point data loaded with", len(self.point_data), "points.")
+        print("Point data loaded with", len(df_pred), "points.")
         df_pred['Point_Number'] = df_pred['Point_Number'].astype(str)
         df_pred = df_pred[df_pred['Point_Number'].isin(self.points_number)]
         self.df = pd.DataFrame(self.points_number, columns=['Point_Number'])
@@ -121,9 +121,9 @@ def test_MeshDataMapper():
     mesh_file= '../../../data/deploy/data/Export_Analysis/9-LV SR Penta.mesh'
     point_data_file = '../../../data/deploy/data/predictions.parquet'
     fname_out = '../../../data/deploy/data/predictions_mapped.vtk'
-    vtk_meta_text = "PatientData S18 S18 4290_S18”
+    vtk_meta_text = 'PatientData S18 S18 4290_S18'
 
-    mapper = MeshDataMapper(path_data_export, mesh_file, point_data_file)
+    mapper = MeshDataMapper(path_data_export, mesh_file, point_data_file , fname_out, vtk_meta_text)
     mapper.read_carto()
     mapper.read_point_data()
     mapper.map_point_data_onto_mesh()
