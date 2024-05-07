@@ -1,4 +1,4 @@
-# Inference Pipeline for ECG Classification
+# Inference Pipeline for ECG Classification (WIP
 
 import os
 import pandas as pd
@@ -9,6 +9,7 @@ import logging
 #from aggregating_data import retrieve_signal
 from data_injest import DataIngest
 from combinedata import preprocess_rawsignal_singlefile
+from points2mesh import MeshDataMapper
 # for inference with tsai model:
 from classifier_tsai import TSai
 
@@ -17,7 +18,6 @@ raw_data_path = "../../../data/deploy/data/Export_Analysis"
 export_analysis_path =  "../../../data/deploy/data"
 fname_data = 'data.csv'
 path_model = 'models'
-output_dir = '../../results/inference/'
 
 catheter_type = "Penta"
 
@@ -48,7 +48,7 @@ def preprocess_data(data_dir, output_dir, catheter_type):
     return os.path.join(output_dir, filename_output)
 
 
-def classify_ecg(model, path_data, path_model, save_results=False):
+def classify_ecg(model, path_data, path_model):
     """
     Classify ECG data with TSai model
 
@@ -69,8 +69,10 @@ def classify_ecg(model, path_data, path_model, save_results=False):
     tsai = TSai('','')
     dfres = tsai.predict_from_file(path_data, path_model)
     # get coordinates of points
-    if save_results:
-        dfres.to_csv(os.path.join(output_dir, 'predictions.csv'), index=False)
+    dfcoord = pd.read_parquet(path_data, columns=['Point_Number','WaveFront','X','Y','Z'])
+    # merge predictions with coordinates on Point_Number and Wavefront
+    dfres = dfres.merge(dfcoord, on=['Point_Number','WaveFront'], how='left')
+    dfres.to_parquet(os.path.join(export_analysis_path, 'predictions.parquet'), index=False)
     
 
 
@@ -83,7 +85,8 @@ def postprocess_data(labels_points, proba_points, meshfile_ref):
     Returns:
         projected labels and probabilities on mesh
     """
-    pass
+    mapper = MeshDataMapper(meshfile_ref, labels_points, proba_points, 'predictions.vtk', fname_out_vtk, meta_text)
+    mapper.run()
 
 def main():
     # Preprocess data
