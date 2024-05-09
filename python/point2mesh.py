@@ -14,6 +14,7 @@ import os
 import pyvista as pv
 import pandas as pd
 from carto_reader.carto_data import Carto
+import vtk
 
 class MeshDataMapper:
     """
@@ -57,6 +58,7 @@ class MeshDataMapper:
     def read_point_data(self):
         """Reads a Parquet file containing X, Y, Z coordinates and 'prediction' data."""
         df_pred = pd.read_parquet(self.point_data_file)
+        df_pred.dropna(inplace=True)
         print("Point data loaded with", len(df_pred), "points.")
         df_pred['Point_Number'] = df_pred['Point_Number'].astype(str)
         df_pred = df_pred[df_pred['Point_Number'].isin(self.points_number)]
@@ -83,17 +85,48 @@ class MeshDataMapper:
          # Map the data from the point cloud to the mesh
         points = pv.PolyData(self.df[['X', 'Y', 'Z']].values)
         points['values'] = self.predictions
-        points['probabilities'] = self.probabilities
+        #points['probabilities'] = self.probabilities
+        # write points to vtk
+        # replace .vtk in self.fname_out with _points.vtk
+        fname_points = self.fname_out.replace('.vtk', '_points.vtk')
+        points.save(fname_points, binary=False)
         # interpolate point data onto mesh
         self.mesh_ipl = mesh_pv.interpolate(points, strategy=null_strategy)
+        # compute normals
+        self.mesh_ipl.compute_normals(point_normals=True, cell_normals=False, inplace=True)
 
     def write_mesh_with_data(self):
         """Writes the mesh with the mapped point data to a file."""
         if self.mesh_ipl is None:
             raise ValueError("No interpolated mesh available to write.")
         # save mesh with mapped data as vtk
-        self.mesh_ipl.save(self.fname_out, binary=False)
-        # replace second line of vtk file with txt string :
+        self.mesh_ipl.save(self.fname_out, binary=False, recompute_normals = True)
+
+
+    def vtk_to_carto(self):
+        """
+        Converts the VTK file to a specific Carto file vtk format.
+        """
+        # Create a reader for the input file
+        reader = vtk.vtkGenericDataObjectReader()
+        reader.SetFileName(self.fname_out)
+        reader.Update()  # Necessary to load the data
+
+        # Output the read mesh to a new VTK file
+        writer = vtk.vtkPolyDataWriter()
+        writer.SetFileName(self.fname_out)
+        
+        # Check if the input is PolyData
+        if isinstance(reader.GetOutput(), vtk.vtkPolyData):
+            writer.SetInputData(reader.GetOutput())
+        else:
+            raise TypeError("Input file is not a polydata type which is required for vtkPolyDataWriter")
+
+        # Set the version to 4.2
+        writer.SetFileVersion(42)
+        writer.Write()
+        
+        # replace second line of vtk file with custom txt string :
         with open(self.fname_out, 'r') as file:
             lines = file.readlines()
         lines[1] = self.vtk_meta_text + "\n"
@@ -101,7 +134,7 @@ class MeshDataMapper:
             file.writelines(lines)
         print(f"Mesh with mapped data saved to {self.fname_out}")
 
-    def plot_mesh_and_points(mesh, add_points=True):
+    def plot_mesh_and_points(self,mesh, add_points=True):
         # plot mesh with mapped data
         p = pv.Plotter()
         p.add_mesh(mesh, scalars='values', cmap='viridis')
@@ -114,17 +147,25 @@ class MeshDataMapper:
         self.read_point_data()
         self.map_point_data_onto_mesh(null_strategy)
         self.write_mesh_with_data()
+        self.vtk_to_carto()
 
 
 def test_MeshDataMapper():
+    #'9-LV SR Penta',
+    #'9-1-ReLV RVp Penta',
+    #'9-1-1-ReLV LVp Penta',
     path_data_export = '../../../data/deploy/data/Export_Analysis'
     mesh_file= '../../../data/deploy/data/Export_Analysis/9-LV SR Penta.mesh'
-    point_data_file = '../../../data/deploy/data/predictions.parquet'
-    fname_out = '../../../data/deploy/data/predictions_mapped.vtk'
+    #point_data_file = '../../../data/deploy/data/predictions.parquet'
+    #point_data_file = '../../../data/deploy/data/S18_SR_NoScar_groundtruth.parquet'
+    point_data_file = "../../../data/deploy/data/predictions_SR_NoScar.parquet"
+    fname_out = '../../../data/deploy/data/predictions_mapped_SR_NoScar.vtk'
     vtk_meta_text = 'PatientData S18 S18 4290_S18'
 
-    mapper = MeshDataMapper(path_data_export, mesh_file, point_data_file , fname_out, vtk_meta_text)
-    mapper.read_carto()
-    mapper.read_point_data()
-    mapper.map_point_data_onto_mesh()
-    mapper.write_mesh_with_data()
+    mapper = MeshDataMapper(path_data_export, mesh_file, point_data_file, fname_out, vtk_meta_text)
+    mapper.run()
+    #mapper.read_carto()
+    #mapper.read_point_data()
+    #mapper.map_point_data_onto_mesh()
+    #mapper.write_mesh_with_data()
+    #mapper.vtk_to_carto()
