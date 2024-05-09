@@ -5,7 +5,7 @@ Functionality:
 - read in carto mesh file
 - read in point data file (parquet) with X, Y, Z, and data columns (prediction, probability)
 - interpolate point data onto mesh using Gaussian kernel
-- write out vtk file with mapped point data
+- write out vtk file with mapped point data and convert to carto format
 
 need pip install carto-reader
 """
@@ -35,7 +35,6 @@ class MeshDataMapper:
         self.mesh = None
         self.mesh_itpl = None
         self.points = None
-        self.points_number = None
         self.point_data = None
         self.df = None
         self.predictions = None
@@ -51,21 +50,23 @@ class MeshDataMapper:
         mesh_name = os.path.basename(self.mesh_file).split('.')[0]
         idx = [i for i, s in enumerate(carto) if mesh_name in s][0]
         self.mesh = carto[idx].mesh
-        points_carto = carto[mesh_name].points
-        self.points_number = list(points_carto.keys())
+        #points_carto = carto[mesh_name].points
+        #self.points_number = list(points_carto.keys())
         #print("Mesh loaded with", self.mesh.n_points, "points and", self.mesh.n_cells, "cells.")
 
-    def read_point_data(self):
+
+    def process_point_data(self):
         """Reads a Parquet file containing X, Y, Z coordinates and 'prediction' data."""
-        df_pred = pd.read_parquet(self.point_data_file)
-        df_pred.dropna(inplace=True)
-        print("Point data loaded with", len(df_pred), "points.")
-        df_pred['Point_Number'] = df_pred['Point_Number'].astype(str)
-        df_pred = df_pred[df_pred['Point_Number'].isin(self.points_number)]
-        self.df = pd.DataFrame(self.points_number, columns=['Point_Number'])
-        self.df = self.df.merge(df_pred, on='Point_Number', how='left')
+        df0 = pd.read_parquet(self.point_data_file)
+        df0.dropna(inplace=True)
+        npoints_unique = df0['Point_Number'].nunique()
+        print("Point data loaded with", len(npoints_unique ), "points.")
+        # averaging probabilities linearly (as model ensemble), alternative is taking mean of log-probabilities
+        self.df = df0.groupby('Point_Number').agg({'probability':'mean'}).reset_index()
+        # merge average probability with original data
+        self.df = pd.merge(self.df, df0[['Point_Number', 'X', 'Y', 'Z']], on='Point_Number', how='left')
+        self.df['prediction'] = self.df['probability'].apply(lambda x: 1 if x > 0.5 else -1)
         self.predictions = self.df['prediction'].values
-        self.predictions = self.predictions.astype(int)
         self.probabilities = self.df['probability'].values
 
     def map_point_data_onto_mesh(self, null_strategy='closest_point'):
@@ -144,7 +145,7 @@ class MeshDataMapper:
 
     def run(self, null_strategy='closest_point'):
         self.read_carto()
-        self.read_point_data()
+        self.process_point_data()
         self.map_point_data_onto_mesh(null_strategy)
         self.write_mesh_with_data()
         self.vtk_to_carto()
@@ -165,7 +166,7 @@ def test_MeshDataMapper():
     mapper = MeshDataMapper(path_data_export, mesh_file, point_data_file, fname_out, vtk_meta_text)
     mapper.run()
     #mapper.read_carto()
-    #mapper.read_point_data()
+    #mapper.process_point_data()
     #mapper.map_point_data_onto_mesh()
     #mapper.write_mesh_with_data()
     #mapper.vtk_to_carto()
