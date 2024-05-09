@@ -69,7 +69,7 @@ class MeshDataMapper:
         self.predictions = self.df['prediction'].values
         self.probabilities = self.df['probability'].values
 
-    def map_point_data_onto_mesh(self, null_strategy='closest_point'):
+    def map_point_data_onto_mesh(self, null_strategy='closest_point', target = 'predictions'):
         """
         Interpolates point data onto the mesh.
         This uses a Gaussian interpolation kernel (using default kernel: sharpness =2)
@@ -78,6 +78,8 @@ class MeshDataMapper:
             null_strategy: Specify a strategy to use when encountering a “null” point during the interpolation process.
                 Default: 'closest_point'
                 Options: 'mask_points', 'null_value', 'closest_point' 
+            target: The target array to interpolate onto the mesh. Default: 'predictions'
+                choices: 'predictions', 'probabilities'
         """
          # convert to pyvista mesh
         if self.mesh is None:
@@ -85,8 +87,12 @@ class MeshDataMapper:
         mesh_pv = self.mesh.pv_mesh()
          # Map the data from the point cloud to the mesh
         points = pv.PolyData(self.df[['X', 'Y', 'Z']].values)
-        points['values'] = self.predictions
-        #points['probabilities'] = self.probabilities
+        if target == 'predictions':
+            points['values'] = self.predictions
+        elif target == 'probabilities':
+            points['values'] = self.probabilities
+        else:
+            raise ValueError("target must be 'predictions' or 'probabilities'")
         # write points to vtk
         # replace .vtk in self.fname_out with _points.vtk
         fname_points = self.fname_out.replace('.vtk', '_points.vtk')
