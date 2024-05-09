@@ -4,6 +4,7 @@ Interpolate point data onto mesh geometry
 Functionality:
 - read in carto mesh file
 - read in point data file (parquet) with X, Y, Z, and data columns (prediction, probability)
+- process point data (average probabilities of model ensemble)
 - interpolate point data onto mesh using Gaussian kernel
 - write out vtk file with mapped point data and convert to carto format
 
@@ -26,21 +27,22 @@ class MeshDataMapper:
         point_data_file: Path and filename to the point data file (parquet) with X, Y, Z, and data columns (prediction, probability).
         fname_out: Path and filename to the output file to save the mesh with mapped data.
         vtk_meta_text: Text to add to the second line of the VTK file.
+        target: The target array to interpolate onto the mesh. Default: 'predictions'
+            choices: 'predictions', 'probabilities'
     
     """
-    def __init__(self, path_data_export, mesh_file, point_data_file, fname_out, vtk_meta_text=""):
+    def __init__(self, path_data_export, mesh_file, point_data_file, fname_out, vtk_meta_text="", target='predictions'):
         self.mesh_file = mesh_file
         self.point_data_file = point_data_file
         self.path_data_export = path_data_export
         self.mesh = None
         self.mesh_itpl = None
-        self.points = None
-        self.point_data = None
         self.df = None
         self.predictions = None
         self.probabilities = None
         self.fname_out = fname_out
         self.vtk_meta_text = vtk_meta_text
+        self.target = target
 
     def read_carto(self):
         """Reads a mesh file."""
@@ -60,7 +62,7 @@ class MeshDataMapper:
         df0 = pd.read_parquet(self.point_data_file)
         df0.dropna(inplace=True)
         npoints_unique = df0['Point_Number'].nunique()
-        print("Point data loaded with", len(npoints_unique ), "points.")
+        print(f"Point data loaded with {npoints_unique} points.")
         # averaging probabilities linearly (as model ensemble), alternative is taking mean of log-probabilities
         self.df = df0.groupby('Point_Number').agg({'probability':'mean'}).reset_index()
         # merge average probability with original data
@@ -69,7 +71,7 @@ class MeshDataMapper:
         self.predictions = self.df['prediction'].values
         self.probabilities = self.df['probability'].values
 
-    def map_point_data_onto_mesh(self, null_strategy='closest_point', target = 'predictions'):
+    def map_point_data_onto_mesh(self, null_strategy='closest_point'):
         """
         Interpolates point data onto the mesh.
         This uses a Gaussian interpolation kernel (using default kernel: sharpness =2)
@@ -78,8 +80,6 @@ class MeshDataMapper:
             null_strategy: Specify a strategy to use when encountering a “null” point during the interpolation process.
                 Default: 'closest_point'
                 Options: 'mask_points', 'null_value', 'closest_point' 
-            target: The target array to interpolate onto the mesh. Default: 'predictions'
-                choices: 'predictions', 'probabilities'
         """
          # convert to pyvista mesh
         if self.mesh is None:
@@ -87,9 +87,9 @@ class MeshDataMapper:
         mesh_pv = self.mesh.pv_mesh()
          # Map the data from the point cloud to the mesh
         points = pv.PolyData(self.df[['X', 'Y', 'Z']].values)
-        if target == 'predictions':
+        if self.target == 'predictions':
             points['values'] = self.predictions
-        elif target == 'probabilities':
+        elif self.target == 'probabilities':
             points['values'] = self.probabilities
         else:
             raise ValueError("target must be 'predictions' or 'probabilities'")
@@ -165,8 +165,9 @@ def test_MeshDataMapper():
     mesh_file= '../../../data/deploy/data/Export_Analysis/9-LV SR Penta.mesh'
     #point_data_file = '../../../data/deploy/data/predictions.parquet'
     #point_data_file = '../../../data/deploy/data/S18_SR_NoScar_groundtruth.parquet'
-    point_data_file = "../../../data/deploy/data/predictions_SR_NoScar.parquet"
-    fname_out = '../../../data/deploy/data/predictions_mapped_SR_NoScar.vtk'
+    #point_data_file = "../../../data/deploy/data/predictions_SR_NoScar.parquet"
+    point_data_file = '../../../data/deploy/data/predictions_NoScar.parquet'
+    fname_out = '../../../data/deploy/data/predictions_mapped_NoScar.vtk'
     vtk_meta_text = 'PatientData S18 S18 4290_S18'
 
     mapper = MeshDataMapper(path_data_export, mesh_file, point_data_file, fname_out, vtk_meta_text)
@@ -176,3 +177,9 @@ def test_MeshDataMapper():
     #mapper.map_point_data_onto_mesh()
     #mapper.write_mesh_with_data()
     #mapper.vtk_to_carto()
+
+
+    # map probabilities
+    fname_out = '../../../data/deploy/data/probabilities_mapped_NoScar.vtk'
+    mapper = MeshDataMapper(path_data_export, mesh_file, point_data_file, fname_out, vtk_meta_text, target='probabilities')
+    mapper.run()
