@@ -101,3 +101,5 @@ dependencies:
       - wasabi==1.1.2
       - weasel==0.3.4
       - pyarrow==16.0.0
+      - pyvista==0.43.7
+      - carto_reader==0.0.12
