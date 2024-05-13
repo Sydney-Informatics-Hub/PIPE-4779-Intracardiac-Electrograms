@@ -54,7 +54,7 @@ saveRDS(cleaned_aggregate_long_data,file = here::here(generated_data_path,"clean
 
 
 
-# Publishable data without any assumption on features.
+# Publishable data without any assumption on features..... filtered for labels only
 
 data_type <- "filtered"
 model_data <- readRDS(file = here::here(generated_data_path,paste0(data_type,"_aggregate_data.rds")))
@@ -74,11 +74,37 @@ saveRDS(model_data,here::here(generated_data_path,paste0("publishable_model_data
 parquet_file <- here::here(generated_data_path,paste0("publishable_model_data.parquet"))
 write_parquet(model_data, parquet_file)
 
-
-# for completing the loop on publishable data to the model we are used
-# reanmed signal_data which is the specific column tsai modelling uses
-# (rather than changing scripts and making other python code break)
+# for completing the loop on publishable data to the model we are
+# renaming signal_data which is the specific signal tsai modelling uses
 model_data <- model_data %>% rename(signal_data = raw_unipolar)
 parquet_file <- here::here(generated_data_path,paste0("publishable_model_data_TSAI.parquet"))
 write_parquet(model_data, parquet_file)
+
+
+
+# Publishable data without any assumption on features.....
+# imputed represents all co-ordinates and assumes signals that were not labelled was
+# no scar
+
+data_type <- "imputed"
+model_data <- readRDS(file = here::here(generated_data_path,paste0(data_type,"_aggregate_data.rds")))
+
+# Predicting finer scar at layer
+model_data <- model_data  %>% mutate(depth_label = case_when(
+  endocardium_scar == 0 & intramural_scar == 0 & epicardial_scar == 0 ~ "NoScar",
+  endocardium_scar == 1 ~ "AtLeastEndo",
+  endocardium_scar == 0 & intramural_scar == 1  ~ "AtLeastIntra",
+  endocardium_scar == 0 & intramural_scar == 0 & epicardial_scar == 1 ~ "epiOnly",
+  TRUE ~ "Otherwise"
+))  %>% select(-c(Animal,`unipolar voltage`,`bipolar voltage`,AnyScar))
+
+
+saveRDS(model_data,here::here(generated_data_path,paste0("publishable_model_data",data_type,".rds")))
+
+# for completing the loop on publishable data to the model we are
+# renaming signal_data which is the specific signal tsai modelling uses
+model_data <- model_data %>% rename(signal_data = raw_unipolar)
+parquet_file <- here::here(generated_data_path,paste0("publishable_model_data_TSAI",data_type,".parquet"))
+write_parquet(model_data, parquet_file)
+
 
