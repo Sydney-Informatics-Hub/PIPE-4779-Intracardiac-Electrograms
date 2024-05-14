@@ -39,9 +39,9 @@ conda env create -f environment.yaml
 conda activate ecg
 ```
 
-### CNN-Based Classification
+### CNN-Based Classification and Inference
 
-To run classification based on CNNs, install via conda/mamba:
+To run classification based on CNNs and inference pipeline, install via conda/mamba:
 ```shell
 conda env create -f environment_tsai.yml
 conda activate tsai
@@ -60,18 +60,24 @@ The inference pipeline consists of several stages including preprocessing data, 
     from inference_pipe import preprocess_data
     preprocess_data(data_dir, output_dir, catheter_type)
     ```
+    This will generate a parquet file with the extracted and cleaned ECG data
 
 2. **Classify ECG**
     ```python
     from inference_pipe import classify_ecg
-    classify_ecg(path_data, path_models, outname_parquet)
+    classify_ecg(path_data, path_models, name_parquet)
     ```
+    This will generate the classification predictions and saves in a point data file in parquet format.
 
 3. **Postprocess and Map Data**
     ```python
     from inference_pipe import postprocess_data
     postprocess_data(path_data_export, meshfile, point_data_file, fname_out_vtk, meta_text)
     ```
+    This will take a geometry reference mesh file and maps the point predictions from the previous step onto the reference mesh and saves as vtk file. Two VTK output files are generated: mesh geometry and point predictions.
+
+To run all steps for multiple models, you can use the `run()` function as described in example below. 
+Note that the argument `combine_models` defines whether to combine all models as ensemble models and generate only one mesh (combine_models = True), or generate for each model in model list a separate prediction and mesh. 
 
 ### Complete Example for Inference
 
@@ -97,8 +103,9 @@ models = [
 meshfile = "/path/to/mesh/file"
 path_out = "/path/to/save/output"
 meta_text = "Metadata text for VTK file, e.g. 'PatientData S18 S18 4290_S18'"
+combine_models = False # Does not combine multiple models into one joint ensemble model.
 
-run(data_dir, path_model, models, meshfile, path_out, meta_text)
+run(data_dir, path_model, models, meshfile, path_out, meta_text, combine_models)
 ```
 
 ### Inference via Command Line Arguments
