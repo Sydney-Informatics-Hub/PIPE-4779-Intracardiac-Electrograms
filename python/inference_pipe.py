@@ -1,10 +1,20 @@
-# Inference Pipeline for ECG Classification (WIP
+"""
+Inference Pipeline for ECG Classification.
+
+How to use:
+    - preprocess_data: Preprocess data for inference
+    - classify_ecg: Classify ECG data with TSai model
+    - postprocess_data: Postprocess data for inference
+
+Python example:
+from inference_pipe import run
+run(data_dir, path_model, models, meshfile, path_out, meta_text, fname_preprocessed, combine_models)
+"""
 
 import os
 import pandas as pd
 import numpy as np
 import logging
-import concurrent.futures
 
 # for preprocessing:
 #from aggregating_data import retrieve_signal
@@ -90,6 +100,7 @@ def classify_ecg_parallel(path_data, path_models, outname_parquet):
     ]
     outname_parquet = "../../../data/deploy/data/predictions_NoScar.parquet"
     """
+    import concurrent.futures
 
     # check if path_models is a list
     if not isinstance(path_models, list):
@@ -168,13 +179,27 @@ def postprocess_data(path_data_export, point_data_file, meshfile, fname_out_vtk,
 
 
 def run(data_dir, 
-                  path_model, 
-                  models, 
-                  meshfile, 
-                  path_out, 
-                  meta_text, 
-                  fname_preprocessed = None, 
-                  combine_models = False):
+        path_model, 
+        models, 
+        meshfile, 
+        path_out, 
+        meta_text, 
+        fname_preprocessed = None, 
+        combine_models = False):
+    """
+    Run inference pipeline for ECG classification
+
+    Input:
+        - data_dir: path to raw data
+        - path_model: path to models
+        - models: list of models
+        - meshfile: path to mesh file for reference geometry that is mapped to
+        - path_out: path to save output
+        - meta_text: metadata text. This text will be written to the second line of the VTK file.
+        - fname_preprocessed: path to preprocessed data. If None, preprocess data. Default None
+        - combine_models: boolean to combine models, default False
+    
+    """
     # check that data_dir, path_model, and meshfile exist
     if not os.path.exists(data_dir):
         raise FileNotFoundError(f"Data directory {data_dir} not found.")
@@ -234,6 +259,12 @@ def test_inference():
         "clf_epiOnly_LVp_120epochs.pkl",
         "clf_epiOnly_SR_120epochs.pkl"
     ]
+    #models = [
+    #    "clf_NoScar_SR_120epochs.pkl",
+    #    "clf_AtLeastEndo_SR_120epochs.pkl",
+    #    "clf_AtLeastIntra_SR_120epochs.pkl",
+    #    "clf_epiOnly_SR_120epochs.pkl"
+    #]
     meshfile= '../../../data/deploy/data/Export_Analysis/9-LV SR Penta.mesh'
     path_out = '../../../data/deploy/data'
     meta_text = 'PatientData S18 S18 4290_S18'
