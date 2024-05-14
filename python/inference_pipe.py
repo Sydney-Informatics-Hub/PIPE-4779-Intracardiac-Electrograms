@@ -217,26 +217,36 @@ def run(data_dir,
     print("Inference completed.")
 
 
+def test_inference():
+    data_dir = "../../../data/deploy/data/Export_Analysis"
+    path_model = './models'
+    models = [
+        "clf_NoScar_RVp_120epochs.pkl", 
+        "clf_NoScar_LVp_120epochs.pkl", 
+        "clf_NoScar_SR_120epochs.pkl",
+        "clf_AtLeastEndo_RVp_120epochs.pkl",
+        "clf_AtLeastEndo_LVp_120epochs.pkl",
+        "clf_AtLeastEndo_SR_120epochs.pkl",
+        "clf_AtLeastIntra_RVp_120epochs.pkl",
+        "clf_AtLeastIntra_LVp_120epochs.pkl",
+        "clf_AtLeastIntra_SR_120epochs.pkl",
+        "clf_epiOnly_RVp_120epochs.pkl",
+        "clf_epiOnly_LVp_120epochs.pkl",
+        "clf_epiOnly_SR_120epochs.pkl"
+    ]
+    meshfile= '../../../data/deploy/data/Export_Analysis/9-LV SR Penta.mesh'
+    path_out = '../../../data/deploy/data'
+    meta_text = 'PatientData S18 S18 4290_S18'
+    combine_models = False
+    fname_preprocessed = preprocess_data(data_dir, path_out, catheter_type)
+    
+    #fname_preprocessed = "../../../data/deploy/data/preprocessed_rawsignal_unipolar_penta.parquet"
+    run(data_dir, path_model, models, meshfile, path_out, meta_text, fname_preprocessed, combine_models)
+
+
     
 def main():
-    # Preprocess data
-    fname_preprocessed = preprocess_data(raw_data_path)
-
-    
-
-    # Classify ECG data
-    for path_model in path_models:
-        # get path name  from path_models
-        path = os.path.dirname(path_model)
-        # get basename w/o .pkl
-        basename = os.path.basename(path_model).split('.')[0]
-        outname_parquet = os.path.join(path, f"predictions_{basename}.parquet")
-        if not combine_models:
-            classify_ecg(fname_preprocessed, path_model, outname_parquet)
-            # Postprocess data
-            postprocess_data(data_dir, outname_parquet, meshfile, fname_out_vtk, meta_text)
-    
-
+    test_inference()
 
 if __name__ == '__main__':
     main()
