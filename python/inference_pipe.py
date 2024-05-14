@@ -166,7 +166,7 @@ def classify_ecg(path_data, path_models, outname_parquet):
     dfres.to_parquet(outname_parquet, index=False)
 
 
-def postprocess_data(path_data_export, point_data_file, meshfile, fname_out_vtk, meta_text):
+def postprocess_data(path_data_export, meshfile, point_data_file, fname_out_vtk, meta_text):
     """
     Postprocess data for inference, including:
         - mapping predictions to mesh
@@ -175,7 +175,7 @@ def postprocess_data(path_data_export, point_data_file, meshfile, fname_out_vtk,
     Returns:
         projected labels and probabilities on mesh
     """
-    mapper = MeshDataMapper(path_data_export, point_data_file, meshfile, fname_out_vtk, meta_text)
+    mapper = MeshDataMapper(path_data_export, meshfile, point_data_file, fname_out_vtk, meta_text)
     mapper.run()
 
 
@@ -224,10 +224,10 @@ def run(data_dir,
     # classify ECG data for each model
     if combine_models:
         print("Generating combined model ...")
-        outname_parquet = os.path.join(path, f"predictions_combined.parquet")
+        outname_parquet = os.path.join(path_out, f"predictions_combined.parquet")
         classify_ecg(fname_preprocessed, path_model, outname_parquet)
         fname_out_vtk = os.path.join(path_out, f"predictions_combined.vtk")
-        postprocess_data(data_dir, outname_parquet, meshfile, fname_out_vtk, meta_text)
+        postprocess_data(data_dir, meshfile, outname_parquet, fname_out_vtk, meta_text)
     else:
         for path_model in path_models:
             print(f"Processing model {os.path.basename(path_model)} ...")
@@ -235,11 +235,11 @@ def run(data_dir,
             path = os.path.dirname(path_model)
             # get basename w/o .pkl
             basename = os.path.basename(path_model).split('.')[0]
-            outname_parquet = os.path.join(path, f"predictions_{basename}.parquet")
+            outname_parquet = os.path.join(path_out, f"predictions_{basename}.parquet")
             classify_ecg(fname_preprocessed, path_model, outname_parquet)
             # Postprocess data
             fname_out_vtk = os.path.join(path_out, f"predictions_{basename}.vtk")
-            postprocess_data(data_dir, outname_parquet, meshfile, fname_out_vtk, meta_text)
+            postprocess_data(data_dir, meshfile, outname_parquet, fname_out_vtk, meta_text)
     print("Inference completed.")
 
 
