@@ -15,6 +15,7 @@ import os
 import pandas as pd
 import numpy as np
 import logging
+import argparse
 
 # for preprocessing:
 #from aggregating_data import retrieve_signal
@@ -277,7 +278,18 @@ def test_inference():
 
     
 def main():
-    test_inference()
+    # Parse arguments
+    parser = argparse.ArgumentParser(description='Inference Pipeline for ECG Classification')
+    parser.add_argument('--data_dir', type=str, help='Path to raw data')
+    parser.add_argument('--path_model', type=str, help='Path to models')
+    parser.add_argument('--models', nargs='+', help='List of models')
+    parser.add_argument('--meshfile', type=str, help='Path to mesh file')
+    parser.add_argument('--path_out', type=str, help='Path to save output')
+    parser.add_argument('--meta_text', type=str, help='Metadata text')
+    parser.add_argument('--fname_preprocessed', type=str, help='Path to preprocessed data', default=None)
+    args = parser.parse_args()
+
+    run(args.data_dir, args.path_model, args.models, args.meshfile, args.path_out, args.meta_text, args.fname_preprocessed)
 
 if __name__ == '__main__':
     main()
