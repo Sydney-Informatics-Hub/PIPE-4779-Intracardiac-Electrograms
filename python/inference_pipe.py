@@ -243,7 +243,16 @@ def run(data_dir,
     print("Inference completed.")
 
 
-def test_inference():
+def test_inference(fname_preprocessed = "../../../data/deploy/data/preprocessed_rawsignal_unipolar_penta.parquet"):
+    """
+    Inference test script.
+
+    This test will run the inference pipeline for ECG classification across all models.
+    Then it will save each prediction to a VTK file.
+
+    Input:
+        - fname_preprocessed: path to preprocessed data (see function preprocess_data)
+    """
     data_dir = "../../../data/deploy/data/Export_Analysis"
     path_model = './models'
     models = [
@@ -260,23 +269,19 @@ def test_inference():
         "clf_epiOnly_LVp_120epochs.pkl",
         "clf_epiOnly_SR_120epochs.pkl"
     ]
-    #models = [
-    #    "clf_NoScar_SR_120epochs.pkl",
-    #    "clf_AtLeastEndo_SR_120epochs.pkl",
-    #    "clf_AtLeastIntra_SR_120epochs.pkl",
-    #    "clf_epiOnly_SR_120epochs.pkl"
-    #]
     meshfile= '../../../data/deploy/data/Export_Analysis/9-LV SR Penta.mesh'
     path_out = '../../../data/deploy/data'
     meta_text = 'PatientData S18 S18 4290_S18'
     combine_models = False
-    fname_preprocessed = preprocess_data(data_dir, path_out, catheter_type)
-    
-    #fname_preprocessed = "../../../data/deploy/data/preprocessed_rawsignal_unipolar_penta.parquet"
+    # check if fname_preprocessed exists
+    if fname_preprocessed is not None:
+        if not os.path.exists(fname_preprocessed):
+            raise FileNotFoundError(f"Preprocessed data file {fname_preprocessed} not found.")
+    if fname_preprocessed is None:
+        fname_preprocessed = preprocess_data(data_dir, path_out, catheter_type)
     run(data_dir, path_model, models, meshfile, path_out, meta_text, fname_preprocessed, combine_models)
 
 
-    
 def main():
     # Parse arguments
     parser = argparse.ArgumentParser(description='Inference Pipeline for ECG Classification')
@@ -289,8 +294,21 @@ def main():
     parser.add_argument('--fname_preprocessed', type=str, help='Path to preprocessed data', default=None)
     args = parser.parse_args()
 
+    # check if args are provided, if not ask for user input
+    if not args.data_dir:
+        args.data_dir = input("Enter path to raw data: ")
+    if not args.path_model:
+        args.path_model = input("Enter path to models: ")
+    if not args.models:
+        args.models = input("Enter list of models: ").split()
+    if not args.meshfile:
+        args.meshfile = input("Enter path to mesh file: ")
+    if not args.path_out:
+        args.path_out = input("Enter path to save output: ")
+    if not args.meta_text:
+        args.meta_text = input("Enter metadata text for adding to second line of vtk file: ")
+
     run(args.data_dir, args.path_model, args.models, args.meshfile, args.path_out, args.meta_text, args.fname_preprocessed)
 
 if __name__ == '__main__':
     main()
-
