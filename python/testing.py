@@ -1,7 +1,7 @@
 import pandas as pd
 import os
 from data_injest import DataIngest
-from inference_pipe import preprocess_data, classify_ecg
+from inference_pipe import preprocess_data, classify_ecg, run
 
 
 # Generates the prediction files - all of them
@@ -58,5 +58,39 @@ def generate_mesh_for_specific_models():
         outname_parquet = os.path.join(path, f"predictions_{basename}.parquet")
         postprocess_data(data_dir, outname_parquet, meshfile, fname_out_vtk, meta_text)
 
+
+def test_inference():
+    """
+    Inference test script.
+
+    This test will run the inference pipeline for ECG classification across all models.
+    Then it will save each prediction to a VTK file.
+
+    Input:
+        - fname_preprocessed: path to preprocessed data (see function preprocess_data)
+    """
+    data_dir = "../deploy/data/Export_Analysis"
+    path_model = './models'
+    models = [
+        "clf_NoScar_RVp_120epochs.pkl", 
+        "clf_AtLeastEndo_RVp_120epochs.pkl",
+        "clf_AtLeastIntra_RVp_120epochs.pkl",
+        "clf_epiOnly_RVp_120epochs.pkl",
+    ]
+    meshfile= '../deploy/data/Export_Analysis/9-1-ReLV RVp Penta.mesh'
+    path_out = '../deploy/data'
+    meta_text = 'PatientData S18 S18 4290_S18'
+    catheter_type = "Penta"
+    fname_preprocessed = "../deploy/data/preprocessed_rawsignal_unipolar_penta.parquet"
+    combine_models = False
+    # check if fname_preprocessed exists
+    if fname_preprocessed is not None:
+        if not os.path.exists(fname_preprocessed):
+            raise FileNotFoundError(f"Preprocessed data file {fname_preprocessed} not found.")
+    if fname_preprocessed is None:
+        fname_preprocessed = preprocess_data(data_dir, path_out, catheter_type)
+    run(data_dir, path_model, models, meshfile, path_out, meta_text, fname_preprocessed, combine_models)
+
+
 #test_python_deploy()
-generate_mesh_for_specific_models()
+test_inference()

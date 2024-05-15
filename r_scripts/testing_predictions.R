@@ -79,11 +79,6 @@ preds_epi <-  purrr::map_dfr(list(
 
 nrow(preds_epi) == 6909 #TRUE
 
-# so conclusion would be pick one model say RVP and apply and it should be consistent.
-# Or alter the classify_ecg.py model to create different instances of the TSAI class
-# that is based on wavefront and apply the specific class to what the row in the dataframe is
-# so you dont run them all and aggregate
-
 
 # testing for exlusivity - do the models predict more than 2 classifications for the same signal
 
@@ -124,5 +119,35 @@ truth_to_outcome <- truth_to_outcome %>%
 overlapping <- truth_to_outcome %>%
   filter(outcome_scar != "NotClassified" & outcome_endo != "NotClassified" ) %>%
   select(Point_Number,WaveFront,X,Y,Z,outcome_scar,outcome_endo,probability_scar,probability_endo)
+
+
+
+# Assuming one Wavefront Model works lets compare truth with prediction outcome
+
+accuracy_NoScar <- truth %>% left_join(.,preds_scar, by = c("Point_Number","X","Y","Z","WaveFront")) %>%
+  select(-c(prediction,target)) %>% filter(outcome != "NotClassified") %>%
+  mutate(correct = ifelse(depth_label == outcome,1,0))
+
+
+accuracy_Endo <- truth %>% left_join(.,preds_endo, by = c("Point_Number","X","Y","Z","WaveFront")) %>%
+  select(-c(prediction,target)) %>% filter(outcome != "NotClassified") %>%
+  mutate(correct = ifelse(depth_label == outcome,1,0))
+
+accuracy_Intra <- truth %>% left_join(.,preds_intra, by = c("Point_Number","X","Y","Z","WaveFront")) %>%
+  select(-c(prediction,target)) %>% filter(outcome != "NotClassified") %>%
+  mutate(correct = ifelse(depth_label == outcome,1,0))
+
+accuracy_Epi <- truth %>% left_join(.,preds_epi, by = c("Point_Number","X","Y","Z","WaveFront")) %>%
+  select(-c(prediction,target)) %>% filter(outcome != "NotClassified") %>%
+  mutate(correct = ifelse(depth_label == outcome,1,0))
+
+
+sum(accuracy_NoScar$correct) / nrow(accuracy_NoScar) # 57%
+
+sum(accuracy_Endo$correct) / nrow(accuracy_Endo) #44%
+
+sum(accuracy_Intra$correct) / nrow(accuracy_Intra) #3%
+
+sum(accuracy_Epi$correct) / nrow(accuracy_Epi) #3%
 
 
