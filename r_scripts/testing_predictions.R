@@ -10,7 +10,7 @@ deploy_data_path <- here::here("deploy","data")
 # df_python dataframe is the result of data_injest.py
 # prediction collects the results of running classify_ecg.py
 
-# this file checks why prediction is not close to truth
+# this file checks why prediction is not close to truth. Represents only S18 and Penta cases.
 
 parquet_file <- here::here(generated_data_path,paste0("publishable_model_data_TSAI","imputed",".parquet"))
 
@@ -83,5 +83,46 @@ nrow(preds_epi) == 6909 #TRUE
 # Or alter the classify_ecg.py model to create different instances of the TSAI class
 # that is based on wavefront and apply the specific class to what the row in the dataframe is
 # so you dont run them all and aggregate
+
+
+# testing for exlusivity - do the models predict more than 2 classifications for the same signal
+
+preds_scar <- preds_scar %>% mutate(outcome = ifelse(prediction == 1,target,"NotClassified"))
+
+preds_endo <- preds_endo %>% mutate(outcome = ifelse(prediction == 1,target,"NotClassified"))
+
+
+preds_intra <- preds_intra %>% mutate(outcome = ifelse(prediction == 1,target,"NotClassified"))
+
+preds_epi<- preds_epi %>% mutate(outcome = ifelse(prediction == 1,target,"NotClassified"))
+
+nrow(truth) == nrow(preds_scar) + nrow(preds_endo) + nrow(preds_intra) + nrow(preds_epi)
+# 6909 NOT EQUAL TO 5436 + 1546 + 1405 + 638
+total_predictions = nrow(preds_scar) + nrow(preds_endo) + nrow(preds_intra) + nrow(preds_epi)
+# 2116 overlapping predictions
+total_predictions - nrow(truth)
+
+#where are the overlapping outcomes.
+truth_to_outcome <- truth %>% select(-signal_data) %>%
+  left_join(.,preds_scar,by = c("Point_Number","WaveFront","X","Y","Z")) %>%
+  rename(outcome_scar = outcome) %>% rename(probability_scar = probability) %>% select(-c(prediction,target))
+
+truth_to_outcome <- truth_to_outcome %>%
+  left_join(.,preds_endo,by = c("Point_Number","WaveFront","X","Y","Z")) %>%
+  rename(outcome_endo = outcome) %>% rename(probability_endo = probability) %>% select(-c(prediction,target))
+
+
+truth_to_outcome <- truth_to_outcome %>%
+  left_join(.,preds_intra,by = c("Point_Number","WaveFront","X","Y","Z")) %>%
+  rename(outcome_intra = outcome) %>% rename(probability_intra = probability) %>% select(-c(prediction,target))
+
+truth_to_outcome <- truth_to_outcome %>%
+  left_join(.,preds_epi,by = c("Point_Number","WaveFront","X","Y","Z")) %>%
+  rename(outcome_epi = outcome) %>% rename(probability_epi = probability) %>% select(-c(prediction,target))
+
+#there will be different overlapping combinations - this one holds 284 overlaping prediction outcomes.
+overlapping <- truth_to_outcome %>%
+  filter(outcome_scar != "NotClassified" & outcome_endo != "NotClassified" ) %>%
+  select(Point_Number,WaveFront,X,Y,Z,outcome_scar,outcome_endo,probability_scar,probability_endo)
 
 
