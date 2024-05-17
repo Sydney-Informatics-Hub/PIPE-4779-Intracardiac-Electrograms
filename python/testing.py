@@ -59,9 +59,36 @@ def generate_mesh_for_specific_models():
         postprocess_data(data_dir, outname_parquet, meshfile, fname_out_vtk, meta_text)
 
 
+def test_inference_RvP():
+    """
+    Run only RVP
+    """
+    data_dir = "../deploy/data/Export_Analysis"
+    path_model = './models'
+    models = [
+        "clf_NoScar_RVp_120epochs.pkl", 
+        "clf_AtLeastEndo_RVp_120epochs.pkl",
+        "clf_AtLeastIntra_RVp_120epochs.pkl",
+        "clf_epiOnly_RVp_120epochs.pkl",
+    ]
+    meshfile= '../deploy/data/Export_Analysis/9-1-ReLV RVp Penta.mesh'
+    path_out = '../deploy/data'
+    meta_text = 'PatientData S18 S18 4290_S18'
+    catheter_type = "Penta"
+    fname_preprocessed = "../deploy/data/preprocessed_rawsignal_unipolar_penta.parquet"
+    combine_models = False
+    # check if fname_preprocessed exists
+    if fname_preprocessed is not None:
+        if not os.path.exists(fname_preprocessed):
+            raise FileNotFoundError(f"Preprocessed data file {fname_preprocessed} not found.")
+    if fname_preprocessed is None:
+        fname_preprocessed = preprocess_data(data_dir, path_out, catheter_type)
+    run(data_dir, path_model, models, meshfile, path_out, meta_text, fname_preprocessed, combine_models)
+
+
 def test_inference():
     """
-    Inference test script.
+    Run all models
 
     This test will run the inference pipeline for ECG classification across all models.
     Then it will save each prediction to a VTK file.
@@ -73,9 +100,17 @@ def test_inference():
     path_model = './models'
     models = [
         "clf_NoScar_RVp_120epochs.pkl", 
+        "clf_NoScar_LVp_120epochs.pkl", 
+        "clf_NoScar_SR_120epochs.pkl",
         "clf_AtLeastEndo_RVp_120epochs.pkl",
+        "clf_AtLeastEndo_LVp_120epochs.pkl",
+        "clf_AtLeastEndo_SR_120epochs.pkl",
         "clf_AtLeastIntra_RVp_120epochs.pkl",
+        "clf_AtLeastIntra_LVp_120epochs.pkl",
+        "clf_AtLeastIntra_SR_120epochs.pkl",
         "clf_epiOnly_RVp_120epochs.pkl",
+        "clf_epiOnly_LVp_120epochs.pkl",
+        "clf_epiOnly_SR_120epochs.pkl"
     ]
     meshfile= '../deploy/data/Export_Analysis/9-1-ReLV RVp Penta.mesh'
     path_out = '../deploy/data'
