@@ -56,7 +56,7 @@ models = [
 logging.basicConfig(level=logging.INFO)
 
 
-def preprocess_data(data_dir, output_dir, catheter_type):
+def preprocess_data(data_dir, output_dir, catheter_type = "Penta"):
     """
     Preprocess data for inference, including:
         - loading data
