@@ -270,7 +270,7 @@ def test_inference(fname_preprocessed = "../../../data/deploy/data/preprocessed_
         "clf_epiOnly_SR_120epochs.pkl"
     ]
     meshfile= '../../../data/deploy/data/Export_Analysis/9-LV SR Penta.mesh'
-    path_out = '../../../data/deploy/data'
+    path_out = '../../../data/deploy/test_output'
     meta_text = 'PatientData S18 S18 4290_S18'
     combine_models = False
     # check if fname_preprocessed exists
