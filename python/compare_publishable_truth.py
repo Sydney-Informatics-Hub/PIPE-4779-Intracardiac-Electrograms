@@ -38,6 +38,7 @@ def prepare_ground_truth():
     df['AtLeastEndo'] = df['endocardium_scar']
     df['AtLeastIntra'] = df['intramural_scar'] & ~df['endocardium_scar']
     df['epiOnly'] = df['epicardial_scar'] & ~df['endocardium_scar'] & ~df['intramural_scar']
+    df.dropna(inplace=True)
     # save to parquet as groundtruth
     df.to_parquet(os.path.join(path, 'S18_groundtruth.parquet'))
 
@@ -58,12 +59,11 @@ def compare_truth_to_inference():
     # merge df_prediction on df_true using Point_Number column
     df = pd.merge(df_true, df_pred, on='Point_Number', how = 'left')
 
-    df.dropna(inplace=True)
     df['truth'] = df['truth'].astype(int)
     df['prediction'] = df['prediction'].astype(int)
 
     accuracy = accuracy_score(df['truth'].values, df['prediction'].values)
-    print(accuracy) 
+    print(f'{select_sheep} - {select_wavefront} - {target}: {accuracy}')
     return(accuracy)
 
 if __name__ == '__main__':
@@ -75,3 +75,9 @@ if __name__ == '__main__':
 # 97.8% for AtLeastEndo RVp - This file has  0.8291814946619217
 # 96.8% for AtLeastIntra RVp - This file has 0.9791560752414845
 # 99.1% for epiOnly RVp  - This file has 0.961870869344179
+
+# TM - compare sebs run after dropping NaNs in the input ground truth
+# S18 - RVp - NoScar: 0.9836233367451381
+# S18 - RVp - AtLeastEndo: 0.977482088024565
+# S18 - RVp - AtLeastIntra: 0.9682702149437052
+# S18 - RVp - epiOnly: 0.9907881269191402
