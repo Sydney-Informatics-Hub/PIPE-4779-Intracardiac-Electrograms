@@ -165,14 +165,14 @@ def preprocess_rawsignal_singlefile(inpath,
     # remove nan values
     dfnew = dfnew.dropna()
     # modify point number to avoid duplication
+    dfnew['Point_Number'] = dfnew['Point_Number'].astype(int)
+    dfnew['Point_Number'] = dfnew['sheep'].astype(str) + '_' + dfnew['Point_Number'].astype(str)
     # rename column signal to 'signal_data'
     dfnew = dfnew.rename(columns={signal: 'signal_data'})
     # convert to int
-    dfnew['Point_Number'] = dfnew['Point_Number'].astype(int)
     dfnew['endocardium_scar'] = dfnew['endocardium_scar'].astype(int)
     dfnew['intramural_scar'] = dfnew['intramural_scar'].astype(int)
     dfnew['epicardial_scar'] = dfnew['epicardial_scar'].astype(int)
-    dfnew['Point_Number'] = dfnew['sheep'].astype(str) + '_' + dfnew['Point_Number'].astype(str)
     fname_out = infname_parquet.replace('.parquet', f'_{signal}_clean.parquet')
     dfnew.to_parquet(os.path.join(inpath, fname_out), index=False)
     print(f'File {fname_out} saved to {inpath}')
