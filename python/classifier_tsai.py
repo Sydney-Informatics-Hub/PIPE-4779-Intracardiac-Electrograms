@@ -111,9 +111,9 @@ class TSai:
     def __init__(self, inpath, fname_csv):
         self.inpath = inpath
         self.fname_csv = fname_csv
+        self.df = self._load_data()
 
-
-    def load_data(self, inpath, fname_csv):
+    def _load_data(self):
         usecols = [
             'Point_Number',
             'WaveFront',
@@ -124,15 +124,17 @@ class TSai:
             'epicardial_scar',
         ]
         # check if file exists
-        if not os.path.isfile(os.path.join(inpath, fname_csv)):
-            raise FileNotFoundError(f'File {fname_csv} not found in {inpath}')
+        if not os.path.isfile(os.path.join(self.inpath, self.fname_csv)):
+            raise FileNotFoundError(f'File {self.fname_csv} not found in {self.inpath}')
         # check if file exists and csv
-        if fname_csv.endswith('.csv'):
-            df = pd.read_csv(os.path.join(inpath, fname_csv), usecols=usecols)
-        elif fname_csv.endswith('.parquet'):
-            df = pd.read_parquet(os.path.join(inpath, fname_csv), columns=usecols)
+        if self.fname_csv.endswith('.csv'):
+            print(f'Load csv file {self.fname_csv} from {self.inpath}')
+            df = pd.read_csv(os.path.join(self.inpath, self.fname_csv), usecols=usecols)
+        elif self.fname_csv.endswith('.parquet'):
+            print(f'Load parquet file {self.fname_csv} from {self.inpath}')
+            df = pd.read_parquet(os.path.join(self.inpath, self.fname_csv), columns=usecols)
         else:
-            raise ValueError(f'File {fname_csv} is not a csv or parquet file')
+            raise ValueError(f'File {self.fname_csv} is not a csv or parquet file')
         # remove nan values
         df = df.dropna()
         # add column "time" to df which starts at 0 and has the same length as "signal_data" for each Point_Number and WaveFront
@@ -148,7 +150,8 @@ class TSai:
         df['epiOnly'] = df['epicardial_scar'] & ~df['endocardium_scar'] & ~df['intramural_scar']
         return df
 
-    def df_to_ts(self, df, wavefront, target='scar'):
+
+    def df_to_ts(self, wavefront, target='scar'):
         """
         Converts the dataframe to tsai format for a given wavefront and target tissue
 
@@ -158,7 +161,7 @@ class TSai:
         """
         self.wavefront = wavefront
         self.target = target
-        dfsel = df[df['WaveFront'] == wavefront][['Point_Number', 'time', 'signal_data', target]]
+        dfsel = self.df[self.df['WaveFront'] == wavefront][['Point_Number', 'time', 'signal_data', target]]
         npoints_unique = dfsel['Point_Number'].nunique()
         signal = [] #np.zeros((npoints_unique, timeseries['signal_data'].apply(len).max()))
         y = dfsel[['Point_Number', target]].drop_duplicates()
@@ -422,13 +425,12 @@ def run_all(inpath,
         rawsignal (bool): Whether to use raw signal data (Default: True) or window_of_interest data
     """
     tsai = TSai(inpath, fname_csv)
-    df = tsai.load_data(inpath, fname_csv)
     results = pd.DataFrame(columns=['target', 'wavefront', 'method', 'accuracy', 'precision', 'auc', 'mcc'])
     # date and time in string format
     os.makedirs(outpath, exist_ok=True)
     for target in target_list:
         for wavefront in ['SR', 'LVp', 'RVp']:
-            X, y = tsai.df_to_ts(df, wavefront, target)
+            X, y = tsai.df_to_ts(wavefront, target)
             tsai.train_model(X, y, epochs = 120, balance_classes = True)
             path_name = outpath + f'_{target}_{wavefront}' 
             accuracy, precision, auc, mcc = tsai.eval_model(outpath=path_name)
@@ -454,8 +456,7 @@ def test_tsai(wavefront, target, inpath, fname_csv):
         fname_csv (str): Filename of the csv file containing the data
     """
     tsai = TSai(inpath, fname_csv)
-    df = tsai.load_data(inpath, fname_csv)
-    X, y = tsai.df_to_ts(df, wavefront, target)
+    X, y = tsai.df_to_ts(wavefront, target)
     tsai.train_model(X, y, epochs = 120, balance_classes = True)
     path_name = '../results/tsai' + f'_{target}_{wavefront}' 
     accuracy, precision, auc, mcc = tsai.eval_model(outpath=path_name)
