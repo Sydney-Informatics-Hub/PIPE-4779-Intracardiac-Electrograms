@@ -111,9 +111,9 @@ class TSai:
     def __init__(self, inpath, fname_csv):
         self.inpath = inpath
         self.fname_csv = fname_csv
+        self.df = self._load_data()
 
-
-    def load_data(self, inpath, fname_csv):
+    def _load_data(self):
         usecols = [
             'Point_Number',
             'WaveFront',
@@ -124,23 +124,26 @@ class TSai:
             'epicardial_scar',
         ]
         # check if file exists
-        if not os.path.isfile(os.path.join(inpath, fname_csv)):
-            raise FileNotFoundError(f'File {fname_csv} not found in {inpath}')
+        if not os.path.isfile(os.path.join(self.inpath, self.fname_csv)):
+            raise FileNotFoundError(f'File {self.fname_csv} not found in {self.inpath}')
         # check if file exists and csv
-        if fname_csv.endswith('.csv'):
-            df = pd.read_csv(os.path.join(inpath, fname_csv), usecols=usecols)
-        elif fname_csv.endswith('.parquet'):
-            df = pd.read_parquet(os.path.join(inpath, fname_csv), columns=usecols)
+        if self.fname_csv.endswith('.csv'):
+            print(f'Load csv file {self.fname_csv} from {self.inpath}')
+            df = pd.read_csv(os.path.join(self.inpath, self.fname_csv), usecols=usecols)
+        elif self.fname_csv.endswith('.parquet'):
+            print(f'Load parquet file {self.fname_csv} from {self.inpath}')
+            df = pd.read_parquet(os.path.join(self.inpath, self.fname_csv), columns=usecols)
         else:
-            raise ValueError(f'File {fname_csv} is not a csv or parquet file')
+            raise ValueError(f'File {self.fname_csv} is not a csv or parquet file')
+
         # remove nan values
         df = df.dropna()
         # add column "time" to df which starts at 0 and has the same length as "signal_data" for each Point_Number and WaveFront
-        df['time'] =df.groupby(['Point_Number', 'WaveFront']).cumcount()
+        df['time'] = df.groupby(['Point_Number', 'WaveFront']).cumcount()
         # Generate a column 'scar' that is 1 if either of the scar columns is 1, otherwise 0
         df['endocardium_scar'] = df['endocardium_scar'].astype(int)
         df['intramural_scar'] = df['intramural_scar'].astype(int)
-        df['epicardial_scar'] =df['epicardial_scar'].astype(int)
+        df['epicardial_scar'] = df['epicardial_scar'].astype(int)
         df['scar'] = df[['endocardium_scar', 'intramural_scar', 'epicardial_scar']].max(axis=1)
         df['NoScar'] = 1 - df['scar']
         df['AtLeastEndo'] = df['endocardium_scar']
@@ -148,7 +151,8 @@ class TSai:
         df['epiOnly'] = df['epicardial_scar'] & ~df['endocardium_scar'] & ~df['intramural_scar']
         return df
 
-    def df_to_ts(self, df, wavefront, target='scar'):
+
+    def df_to_ts(self, wavefront, target='scar'):
         """
         Converts the dataframe to tsai format for a given wavefront and target tissue
 
@@ -156,16 +160,17 @@ class TSai:
             wavefront (str): 'LVp', 'RVp', or 'SR'
             target (str): 'scar' (Default) or 'endocardium_scar', 'intramural_scar', 'epicardial_scar'
         """
+        print(f'Convert data to TSAi format for wavefront: {wavefront} and target: {target}')
         self.wavefront = wavefront
         self.target = target
-        dfsel = df[df['WaveFront'] == wavefront][['Point_Number', 'time', 'signal_data', target]]
+        dfsel = self.df[self.df['WaveFront'] == wavefront][['Point_Number', 'time', 'signal_data', target]]
         npoints_unique = dfsel['Point_Number'].nunique()
         signal = [] #np.zeros((npoints_unique, timeseries['signal_data'].apply(len).max()))
         y = dfsel[['Point_Number', target]].drop_duplicates()
         # get length of signal_data for each point
         signal_length = dfsel.groupby('Point_Number')['signal_data'].apply(len)
         signal_length_max = signal_length.max()
-        print(f"Max signal length: {signal_length_max}")
+        print(f"Number of unique points: {npoints_unique}, Max signal length: {signal_length_max}")
         X = np.zeros((len(y), signal_length_max))
         #aggregate 'signal_data' directly 
         aggregated_data = dfsel.groupby('Point_Number')['signal_data'].agg(list)
@@ -195,7 +200,7 @@ class TSai:
             resampled_signals.append(resampled_signal)
         return np.array(resampled_signals)
 
-    def train_model(self, X, y, epochs = 100, balance_classes = True):
+    def train_model(self, X, y, epochs = 100, batch_size = None, balance_classes = True):
         """
         Run the model using the tsai package.
 
@@ -243,6 +248,7 @@ class TSai:
                         arch="InceptionTimePlus", 
                         tfms=tfms, 
                         batch_tfms=batch_tfms, 
+                        batch_size=batch_size,
                         metrics = tsai_accuracy,
                         weights = self.sample_weight,
                         #cbs=ShowGraph()
@@ -349,9 +355,9 @@ class TSai:
             df = pd.read_parquet(path_data, columns=use_cols)
         else:
             raise ValueError(f'File {path_data} is not a csv or parquet file')
-        
+
         ## Preprocessing to tsai format
-        
+
         len_before = len(df)
         # remove duplicate entries that have same Point_Number and WaveFront
         df = df.drop_duplicates(subset = ['Point_Number', 'WaveFront'])
@@ -407,8 +413,10 @@ class TSai:
 def run_all(inpath,
             fname_csv, 
             outpath, 
-            target_list = ['NoScar', 'AtLeastEndo', 'AtLeastIntra', 'epiOnly'],
-            method = 'CNN'):
+            target_list=['NoScar', 'AtLeastEndo', 'AtLeastIntra', 'epiOnly'],
+            method='CNN',
+            epochs=120,
+            batch_size=None):
     """
     Train and evaluate the model for all targets and wavefronts.
 
@@ -418,18 +426,20 @@ def run_all(inpath,
         target_list (list): List of target labels (Default: ['scar','endocardium_scar','intramural_scar','epicardial_scar'])
             example options: ['NoScar', 'AtLeastEndo', 'AtLeastIntra', 'epiOnly'] 
             or ['scar','endocardium_scar','intramural_scar','epicardial_scar']
+        sheep (str): Sheep number to use (default 'S18')
         method (str): Method to use (Default: 'CNN') 
+        epochs (int): Number of epochs to train (Default: 120)
+        batch_size (int): Size of each batch (Default: [64, 128])
         rawsignal (bool): Whether to use raw signal data (Default: True) or window_of_interest data
     """
     tsai = TSai(inpath, fname_csv)
-    df = tsai.load_data(inpath, fname_csv)
     results = pd.DataFrame(columns=['target', 'wavefront', 'method', 'accuracy', 'precision', 'auc', 'mcc'])
     # date and time in string format
     os.makedirs(outpath, exist_ok=True)
     for target in target_list:
         for wavefront in ['SR', 'LVp', 'RVp']:
-            X, y = tsai.df_to_ts(df, wavefront, target)
-            tsai.train_model(X, y, epochs = 120, balance_classes = True)
+            X, y = tsai.df_to_ts(wavefront, target)
+            tsai.train_model(X, y, epochs=epochs, balance_classes=True, batch_size=batch_size)
             path_name = outpath + f'_{target}_{wavefront}' 
             accuracy, precision, auc, mcc = tsai.eval_model(outpath=path_name)
             new_row = [{'target': target, 
@@ -449,14 +459,13 @@ def test_tsai(wavefront, target, inpath, fname_csv):
 
     Args:
         wavefront (str): 'LVp', 'RVp', or 'SR'
-        target (str): 'scar' (Default) or 'endocardium_scar', 'intramural_scar', 'epicardial_scar'
+        target (str): 'scar' or 'endocardium_scar', 'intramural_scar', 'epicardial_scar'
         inpath (str): Path to the input data
         fname_csv (str): Filename of the csv file containing the data
     """
     tsai = TSai(inpath, fname_csv)
-    df = tsai.load_data(inpath, fname_csv)
-    X, y = tsai.df_to_ts(df, wavefront, target)
-    tsai.train_model(X, y, epochs = 120, balance_classes = True)
+    X, y = tsai.df_to_ts(wavefront, target)
+    tsai.train_model(X, y, epochs = 180, balance_classes = True)
     path_name = '../results/tsai' + f'_{target}_{wavefront}' 
     accuracy, precision, auc, mcc = tsai.eval_model(outpath=path_name)
 
