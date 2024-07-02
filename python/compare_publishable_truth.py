@@ -13,17 +13,17 @@ from sklearn.metrics import (
 from inference_pipe import test_inference, test_injest_and_inference
 
 # settings to choose
-target = 'AtLeastIntra' #'AtLeastEndo' # 'NoScar' #'epiOnly' ### check the predictions for accuracy
-fname_csv = 'publishable_model_data_TSAIimputed.parquet'
+target = 'NoScar' # 'AtLeastIntra' #'AtLeastEndo' # 'NoScar' #'epiOnly' ### check the predictions for accuracy
+fname_csv = 'publishable_model_data_TSAI.parquet'
 inpath = '../data/generated/'
 inpath_predictions = '../deploy/output'
-select_wavefront = 'RVp'
+select_wavefront = 'RVp' #'RVp' 'LVp' 'SR'
 select_sheep = 'S18'
 path = '../deploy/test_output'
 
 
 #settings done by choices
-fname_pred = f'predictions_clf_{target}_RVp_120epochs.parquet'
+fname_pred = f'predictions_clf_{target}_{select_wavefront}_120epochs.parquet'
 fname_true = 'S18_groundtruth.parquet'
 
 def prepare_ground_truth():
@@ -81,3 +81,17 @@ if __name__ == '__main__':
 # S18 - RVp - AtLeastEndo: 0.977482088024565
 # S18 - RVp - AtLeastIntra: 0.9682702149437052
 # S18 - RVp - epiOnly: 0.9907881269191402
+
+# KM - S18 using 'publishable_model_data_TSAI.parquet' rather than imputed confirms TM results
+#S18 - RVp - NoScar: 0.9836233367451381
+# S18 - RVp - AtLeastEndo: 0.977482088024565
+# S18 - RVp - AtLeastIntra: 0.9682702149437052
+# S18 - RVp - epiOnly: 0.9907881269191402
+# S18 - LVp - NoScar: 0.9335083114610674
+# S18 - LVp - AtLeastEndo: 0.8985126859142607
+# S18 - LVp - AtLeastIntra: 0.9142607174103237
+# S18 - LVp - epiOnly: 0.9711286089238845
+# S18 - SR - NoScar: 0.9826937547027841
+# S18 - SR - AtLeastEndo: 0.9661399548532731
+# S18 - SR - AtLeastIntra: 0.9721595184349134
+# S18 - SR - epiOnly: 0.9781790820165538
