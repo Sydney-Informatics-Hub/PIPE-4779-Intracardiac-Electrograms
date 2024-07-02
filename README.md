@@ -19,7 +19,21 @@ If you make use of this software for your research project, please include the f
 
 “This research was supported by the Sydney Informatics Hub, a Core Research Facility of the University of Sydney."
 
-## Main Software components
+## Deployment steps
+
+1. **Set Up**. Clone this repository with `git clone https://github.com/Sydney-Informatics-Hub/PIPE-4779-Intracardiac-Electrograms.git`. Pretrained models can be found [here](https://unisyd.sharepoint.com/:f:/r/sites/ComplexArrhythmiaProgram/Shared%20Documents/Project%20Data/Bioinformatics%20EGM%20signal%20analysis/SIH/models/tsai_rawsignal_unipolar?csf=1&web=1&e=HoY3XN) and need to be copied to the `/python/models` subfolder.
+
+2. **Load Data**. Navigate to the `deploy/data` folder. A subfolder called `Export_Analysis` is where all the data should be kept under when making predictions on scar tissue by depth. 
+
+3. **Make Prediction**. Run `inference_pipe.py` in the /python directory. This uses the pretrained models in the `/python/models` and makes predictions on the presence of scar tissue at varying depths on the loaded data. Predictions for each wavefront and depth are made. The output of these predictions in 3D space are stored in the folder `deploy/output` as Vtk files. Vtk files named by wavefront and depth (for example: /deploy/output/predictions_clf_AtLeastIntra_RVp_120epochs.vtk). These vtk files can be opened by Carto or [slicer](https://www.slicer.org/).
+
+## Main Data components
+
+1. [Publishable Data ](https://unisyd.sharepoint.com/:f:/r/sites/ComplexArrhythmiaProgram/Shared%20Documents/Project%20Data/Bioinformatics%20EGM%20signal%20analysis/SIH/data/publishable_data?csf=1&web=1&e=fXdf9o) holds the results of the data injest during model training. Phase 1 of the project explored many features including bipolar and unipolar signals, window of interest and raw time horizons, and using different datasets (filtered uses the labels directly versus imputed assumes no-scar where signals exist and labels were blank. This is link holds many files that reflect this exploration. The conclusion of phase1 was that the best performing model used unipolar raw signals with the filtered dataset (no imputation). Hence the file `publishable_model_data_TSAI.parquet` holds the training data (signals and depth labels) that are associated with our best performing model. depth_label is the classification using the at least methodology rather than the independent classification.
+
+2. [TSAI pretrained models](https://unisyd.sharepoint.com/:f:/r/sites/ComplexArrhythmiaProgram/Shared%20Documents/Project%20Data/Bioinformatics%20EGM%20signal%20analysis/SIH/models/tsai_rawsignal_unipolar?csf=1&web=1&e=HoY3XN) by wavefront and depth. The model specifically uses unipolar raw signals during training. 
+
+## Phase1 - model exporation and data injestion.
 
 1. aggregating_data.R:  Aggregates data (signals and labels) into a single dataframe given the data structure sheep/labelled (holding the 3 labelled sheets) and sheep/Export_Analysis (holding all other files). Structure expected looks like:
 

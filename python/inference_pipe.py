@@ -11,6 +11,7 @@ from inference_pipe import run
 run(data_dir, path_model, models, meshfile, path_out, meta_text, fname_preprocessed, combine_models)
 """
 
+import glob
 import os
 import pandas as pd
 import numpy as np
@@ -56,7 +57,7 @@ models = [
 logging.basicConfig(level=logging.INFO)
 
 
-def preprocess_data(data_dir, output_dir, catheter_type):
+def preprocess_data(data_dir, output_dir, catheter_type = "Penta"):
     """
     Preprocess data for inference, including:
         - loading data
@@ -243,7 +244,11 @@ def run(data_dir,
     print("Inference completed.")
 
 
-def test_inference(fname_preprocessed = "../../../data/deploy/data/preprocessed_rawsignal_unipolar_penta.parquet"):
+def test_inference(fname_preprocessed = "../../../data/deploy/data/preprocessed_rawsignal_unipolar_penta.parquet",
+                   data_dir = "../../../data/deploy/data/Export_Analysis",
+                   path_model = './models',
+                   meshfile= '../../../data/deploy/data/Export_Analysis/9-LV SR Penta.mesh',
+                   path_out = '../../../data/deploy/test_output'):
     """
     Inference test script.
 
@@ -253,8 +258,6 @@ def test_inference(fname_preprocessed = "../../../data/deploy/data/preprocessed_
     Input:
         - fname_preprocessed: path to preprocessed data (see function preprocess_data)
     """
-    data_dir = "../../../data/deploy/data/Export_Analysis"
-    path_model = './models'
     models = [
         "clf_NoScar_RVp_120epochs.pkl", 
         "clf_NoScar_LVp_120epochs.pkl", 
@@ -268,9 +271,14 @@ def test_inference(fname_preprocessed = "../../../data/deploy/data/preprocessed_
         "clf_epiOnly_RVp_120epochs.pkl",
         "clf_epiOnly_LVp_120epochs.pkl",
         "clf_epiOnly_SR_120epochs.pkl"
-    ]
-    meshfile= '../../../data/deploy/data/Export_Analysis/9-LV SR Penta.mesh'
-    path_out = '../../../data/deploy/test_output'
+    ] 
+    print("checking parameters fname_preprocessed:  ", fname_preprocessed,
+          "data_dir: ", data_dir,
+          "path_model",path_model,
+          "meshfile: ", meshfile,
+          "path_out: ", path_out)
+
+    
     meta_text = 'PatientData S18 S18 4290_S18'
     combine_models = False
     # check if fname_preprocessed exists
@@ -280,6 +288,15 @@ def test_inference(fname_preprocessed = "../../../data/deploy/data/preprocessed_
     if fname_preprocessed is None:
         fname_preprocessed = preprocess_data(data_dir, path_out, catheter_type)
     run(data_dir, path_model, models, meshfile, path_out, meta_text, fname_preprocessed, combine_models)
+
+def test_injest_and_inference():
+    data_dir = "../deploy/data/Export_Analysis"    
+    path_model = './models'
+    pattern_meshfile = os.path.join(data_dir, '* RVp Penta.mesh') #this name can vary
+    meshfile = str(glob.glob(pattern_meshfile)[0])
+    path_out = '../deploy/output'
+    fname_preprocessed = preprocess_data(data_dir,path_out) #this will run data injest
+    test_inference(fname_preprocessed,data_dir,path_model,meshfile,path_out)
 
 
 def main():
@@ -311,4 +328,5 @@ def main():
     run(args.data_dir, args.path_model, args.models, args.meshfile, args.path_out, args.meta_text, args.fname_preprocessed)
 
 if __name__ == '__main__':
-    main()
+    #main()
+    test_injest_and_inference()

@@ -9,7 +9,7 @@ from sklearn.metrics import (
     roc_auc_score, 
     precision_score,
     matthews_corrcoef)
-from inference_pipe import test_inference
+from inference_pipe import test_inference, test_injest_and_inference
 
 
 fname_csv = 'NestedDataAll_rawsignal_unipolar.parquet'
@@ -34,7 +34,7 @@ df.to_parquet(os.path.join(path, 'S18_groundtruth.parquet'))
 
 
 ### run prediction with 
-test_inference()
+test_inference() #sebs version says results are accurate
 
 ### now check the predictions for accuracy
 target = 'epiOnly'
