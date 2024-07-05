@@ -409,17 +409,33 @@ Research Facility of the University of Sydney.”</p>
 <div id="deployment-steps" class="section level2">
 <h2>Deployment steps</h2>
 <ol style="list-style-type: decimal">
-<li><p><strong>Set Up</strong>. Clone this repository with
-<code>git clone https://github.com/Sydney-Informatics-Hub/PIPE-4779-Intracardiac-Electrograms.git</code>.
-Pretrained models can be found <a href="https://unisyd.sharepoint.com/:f:/r/sites/ComplexArrhythmiaProgram/Shared%20Documents/Project%20Data/Bioinformatics%20EGM%20signal%20analysis/SIH/models/tsai_rawsignal_unipolar?csf=1&amp;web=1&amp;e=HoY3XN">here</a>
+<li><p><strong>Clone Repo</strong>. Clone this repository with
+<code>git clone https://github.com/Sydney-Informatics-Hub/PIPE-4779-Intracardiac-Electrograms.git</code>
+and change directory into it
+<code>cd PIPE-4779-Intracardiac-Electrograms</code>. If this is your
+first time using git, more information can be found <a href="https://www.atlassian.com/git/tutorials/what-is-version-control">here</a>.
+SSH keys need to be used for authentication and instructions can be
+found <a href="https://docs.github.com/en/authentication/connecting-to-github-with-ssh/checking-for-existing-ssh-keys">here</a>.</p></li>
+<li><p><strong>Load Models</strong>. Pretrained models can be found <a href="https://unisyd.sharepoint.com/:f:/r/sites/ComplexArrhythmiaProgram/Shared%20Documents/Project%20Data/Bioinformatics%20EGM%20signal%20analysis/SIH/models/tsai_rawsignal_unipolar?csf=1&amp;web=1&amp;e=HoY3XN">here</a>
 and need to be copied to the <code>/python/models</code>
 subfolder.</p></li>
-<li><p><strong>Load Data</strong>. Navigate to the
-<code>deploy/data</code> folder. A subfolder called
-<code>Export_Analysis</code> is where all the data should be kept under
-when making predictions on scar tissue by depth.</p></li>
+<li><p><strong>Load Data</strong>. A subfolder called
+<code>/deploy/data/Export_Analysis</code> is where all the CARTO data
+should be kept under when making predictions on scar tissue by depth.
+The model inference will scan these files during the data injest and
+create a parquet file in
+<code>/deploy/output/preprocessed_rawsignal_unipolar_penta.parquet</code>that
+aggregates the data injestion. This file will be overwritten with each
+run of the data injest process.</p></li>
+<li><p><strong>Create Environment</strong>. A conda environment called
+tsai is used to run these scripts. Once <a href="https://docs.anaconda.com/miniconda/">minicoda</a> is installed,
+in the <code>/python</code> subfolder run
+<code>conda env create -f environment_tsai.yml</code> then activate the
+environment with <code>conda activate tsai</code>. The environment only
+needs to be created once.</p></li>
 <li><p><strong>Make Prediction</strong>. Run
-<code>inference_pipe.py</code> in the /python directory. This uses the
+<code>inference_pipe.py</code> in the <code>/python</code> directory to
+run both the data injest and the model inference. This uses the
 pretrained models in the <code>/python/models</code> and makes
 predictions on the presence of scar tissue at varying depths on the
 loaded data. Predictions for each wavefront and depth are made. The
@@ -451,8 +467,11 @@ pretrained models</a> by wavefront and depth. The model specifically
 uses unipolar raw signals during training.</p></li>
 </ol>
 </div>
-<div id="phase1---model-exporation-and-data-injestion." class="section level2">
-<h2>Phase1 - model exporation and data injestion.</h2>
+<div id="phase1---model-exporation." class="section level2">
+<h2>Phase1 - Model exporation.</h2>
+<p>This section describes how the training data was aggregated and how
+to run the training model.</p>
+<p><strong>DATA INJEST</strong></p>
 <ol style="list-style-type: decimal">
 <li>aggregating_data.R: Aggregates data (signals and labels) into a
 single dataframe given the data structure sheep/labelled (holding the 3
@@ -506,6 +525,19 @@ space</p></li>
 treats 3 layers in an independent way. Models are more sophisticated and
 have better accuracy (than compared to the orange exploration)</p></li>
 </ol>
+<p><strong>TRAINING MODEL METHODOLOGY</strong></p>
+<p>The classifier_tsai_published.py is the starting point to training
+the model given parameters of where the publishable data (see above) is
+stored and the labels of the ground-truth (using the At Least measure).
+The conclusion from phase 1 was that the unipolar raw signal yielded the
+best performing model, particularly in detecting scar tissue in the
+outer layers (Intra,Epi). A specialised time series model called <a href="https://timeseriesai.github.io/tsai/">tsai</a> was trained on all
+the sheep signal data to create the <a href="https://unisyd.sharepoint.com/:f:/r/sites/ComplexArrhythmiaProgram/Shared%20Documents/Project%20Data/Bioinformatics%20EGM%20signal%20analysis/SIH/models/tsai_rawsignal_unipolar?csf=1&amp;web=1&amp;e=HoY3XN">pretrained
+models</a>.</p>
+<p>This model uses a CNN methodology with the test / train split being
+20% 80%. The time series learner <a href="https://timeseriesai.github.io/tsai/tslearner.html">documentation
+is here</a> and engaged in the code in the train_model section in
+classifier_tsai.py.</p>
 </div>
 </div>
 
