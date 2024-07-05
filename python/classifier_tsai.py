@@ -99,19 +99,22 @@ class TSai:
     Args:
         inpath (str): Path to the input data
         fname_csv (str): Filename of the csv file containing the data
+        load_train_data (bool): Whether to load the data for training (default=False)
 
     Example:
         tsai = TSai(inpath, fname_csv)
-        df = tsai.load_data(inpath, fname_csv)
+        df = tsai.load_train_data(inpath, fname_csv)
         X, y = tsai.df_to_ts(df, wavefront, target)
         tsai.train_model(X, y)
         accuracy, precision, auc, mcc = tsai.eval_model()
     """
 
-    def __init__(self, inpath, fname_csv):
+    def __init__(self, inpath, fname_csv, load_train_data=False):
         self.inpath = inpath
         self.fname_csv = fname_csv
-        self.df = self._load_data()
+        self.df = None
+        if load_train_data:
+            self.df = self._load_data()
 
     def _load_data(self):
         usecols = [
@@ -432,7 +435,7 @@ def run_all(inpath,
         batch_size (int): Size of each batch (Default: [64, 128])
         rawsignal (bool): Whether to use raw signal data (Default: True) or window_of_interest data
     """
-    tsai = TSai(inpath, fname_csv)
+    tsai = TSai(inpath, fname_csv, load_train_data=True)
     results = pd.DataFrame(columns=['target', 'wavefront', 'method', 'accuracy', 'precision', 'auc', 'mcc'])
     # date and time in string format
     os.makedirs(outpath, exist_ok=True)
@@ -463,7 +466,7 @@ def test_tsai(wavefront, target, inpath, fname_csv):
         inpath (str): Path to the input data
         fname_csv (str): Filename of the csv file containing the data
     """
-    tsai = TSai(inpath, fname_csv)
+    tsai = TSai(inpath, fname_csv, load_train_data=True)
     X, y = tsai.df_to_ts(wavefront, target)
     tsai.train_model(X, y, epochs = 180, balance_classes = True)
     path_name = '../results/tsai' + f'_{target}_{wavefront}' 
