@@ -219,9 +219,11 @@ def run(data_dir,
         os.makedirs(path_out, exist_ok=True)
 
     # preprocess data if needed
+    print(" Performing data aggregation from path",data_dir,"...")
     if not fname_preprocessed:
         fname_preprocessed = preprocess_data(data_dir)
 
+    print("Starting Inference ...")
     # classify ECG data for each model
     if combine_models:
         print("Generating combined model ...")
@@ -289,13 +291,26 @@ def test_inference(fname_preprocessed = "../../../data/deploy/data/preprocessed_
         fname_preprocessed = preprocess_data(data_dir, path_out, catheter_type)
     run(data_dir, path_model, models, meshfile, path_out, meta_text, fname_preprocessed, combine_models)
 
+def find_file(pattern):
+    files = glob.glob(pattern)
+    if not files:
+        raise FileNotFoundError(f"Mesh file not found matching the pattern: {pattern}")
+    return files[0]
+
 def test_injest_and_inference():
     data_dir = "../deploy/data/Export_Analysis"    
     path_model = './models'
     pattern_meshfile = os.path.join(data_dir, '* RVp Penta.mesh') #this name can vary
-    meshfile = str(glob.glob(pattern_meshfile)[0])
+    try:
+        meshfile = find_file(pattern_meshfile)
+        print(f"Using mesh file: {meshfile}")
+    except FileNotFoundError as e:
+        raise(e)
+
     path_out = '../deploy/output'
+    print("Running Data Injest using relative folder ",data_dir)
     fname_preprocessed = preprocess_data(data_dir,path_out) #this will run data injest
+    print("Running Inference ... ")
     test_inference(fname_preprocessed,data_dir,path_model,meshfile,path_out)
 
 

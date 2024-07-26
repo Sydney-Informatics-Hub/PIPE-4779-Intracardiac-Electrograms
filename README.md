@@ -29,7 +29,7 @@ If you make use of this software for your research project, please include the f
 
 4. **Create Environment**. A conda environment called tsai is used to run these scripts. Once [minicoda](https://docs.anaconda.com/miniconda/) is installed, in the `/python` subfolder run `conda env create -f environment_tsai.yml` then activate the environment with `conda activate tsai`. The environment only needs to be created once.
 
-5. **Make Prediction**. Run `inference_pipe.py` in the `/python` directory to run both the data injest and the model inference. This uses the pretrained models in the `/python/models` and makes predictions on the presence of scar tissue at varying depths on the loaded data. Predictions for each wavefront and depth are made. The output of these predictions in 3D space are stored in the folder `deploy/output` as Vtk files. Vtk files named by wavefront and depth (for example: /deploy/output/predictions_clf_AtLeastIntra_RVp_120epochs.vtk). These vtk files can be opened by Carto or [slicer](https://www.slicer.org/).
+5. **Make Prediction**. Change directory into the python folder with `cd python`. Run the python file with `python inference_pipe.py`. This will run both the data injest and the model inference. This uses the pretrained models in the `/python/models` and makes predictions on the presence of scar tissue at varying depths on the loaded data. Predictions for each wavefront and depth are made. The output of these predictions in 3D space are stored in the folder `deploy/output` as Vtk files. Vtk files named by wavefront and depth (for example: /deploy/output/predictions_clf_AtLeastIntra_RVp_120epochs.vtk). These vtk files can be opened by Carto or [slicer](https://www.slicer.org/).
 
 ## Main Data components
 

@@ -433,15 +433,15 @@ in the <code>/python</code> subfolder run
 <code>conda env create -f environment_tsai.yml</code> then activate the
 environment with <code>conda activate tsai</code>. The environment only
 needs to be created once.</p></li>
-<li><p><strong>Make Prediction</strong>. Run
-<code>inference_pipe.py</code> in the <code>/python</code> directory to
-run both the data injest and the model inference. This uses the
-pretrained models in the <code>/python/models</code> and makes
-predictions on the presence of scar tissue at varying depths on the
-loaded data. Predictions for each wavefront and depth are made. The
-output of these predictions in 3D space are stored in the folder
-<code>deploy/output</code> as Vtk files. Vtk files named by wavefront
-and depth (for example:
+<li><p><strong>Make Prediction</strong>. Change directory into the
+python folder with <code>cd python</code>. Run the python file with
+<code>python inference_pipe.py</code>. This will run both the data
+injest and the model inference. This uses the pretrained models in the
+<code>/python/models</code> and makes predictions on the presence of
+scar tissue at varying depths on the loaded data. Predictions for each
+wavefront and depth are made. The output of these predictions in 3D
+space are stored in the folder <code>deploy/output</code> as Vtk files.
+Vtk files named by wavefront and depth (for example:
 /deploy/output/predictions_clf_AtLeastIntra_RVp_120epochs.vtk). These
 vtk files can be opened by Carto or <a href="https://www.slicer.org/">slicer</a>.</p></li>
 </ol>
