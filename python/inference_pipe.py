@@ -251,7 +251,8 @@ def test_inference(fname_preprocessed = "../../../data/deploy/data/preprocessed_
                    path_model = './models',
                    meshfile= '../../../data/deploy/data/Export_Analysis/9-LV SR Penta.mesh',
                    path_out = '../../../data/deploy/test_output',
-                   wavefront_selected = None):
+                   wavefront_selected = None,
+                   meta_text = ''):
     """
     Inference test script.
 
@@ -286,7 +287,8 @@ def test_inference(fname_preprocessed = "../../../data/deploy/data/preprocessed_
           "path_model",path_model,
           "meshfile: ", meshfile,
           "path_out: ", path_out)
-    meta_text = ''
+    
+    print("meta_text set as: ",meta_text)
     combine_models = False
     # check if fname_preprocessed exists
     if fname_preprocessed is not None:
@@ -302,10 +304,11 @@ def find_file(pattern):
         raise FileNotFoundError(f"Mesh file not found matching the pattern: {pattern}")
     return files[0]
 
-def test_injest_and_inference(wavefront_selected = None):
+def test_injest_and_inference(wavefront_selected = None, catheter_type = "Penta",meta_text = 'Inference: '):
     data_dir = "../deploy/data/Export_Analysis"    
     path_model = './models'
-    pattern_meshfile = os.path.join(data_dir, '* RVp Penta.mesh') #this name can vary
+    find_mesh_file = '*RVp*' + catheter_type+ '.mesh'
+    pattern_meshfile = os.path.join(data_dir, find_mesh_file) #this name can vary
     try:
         meshfile = find_file(pattern_meshfile)
         print(f"Using mesh file: {meshfile}")
@@ -314,10 +317,11 @@ def test_injest_and_inference(wavefront_selected = None):
 
     path_out = '../deploy/output'
     print("Running Data Injest using relative folder ",data_dir)
-    fname_preprocessed = preprocess_data(data_dir,path_out) #this will run data injest
+    fname_preprocessed = preprocess_data(data_dir,path_out,catheter_type) #this will run data injest
+    #for testing only
     #fname_preprocessed = "../deploy/output/preprocessed_rawsignal_unipolar_penta.parquet" #testing only
     print("Running Inference ... ")
-    test_inference(fname_preprocessed,data_dir,path_model,meshfile,path_out,wavefront_selected)
+    test_inference(fname_preprocessed,data_dir,path_model,meshfile,path_out,wavefront_selected,meta_text)
 
 
 def main():
@@ -352,11 +356,18 @@ if __name__ == '__main__':
     #main()
     parser = argparse.ArgumentParser(description='Inference Pipeline for ECG Classification')
     parser.add_argument('--wavefront', type=str, help='Path to raw data')
+    parser.add_argument('--catheter', type=str, help='Path to raw data')
+    parser.add_argument('--meta', type=str, help='meta text for carto. Default is Inference')
     args = parser.parse_args()
     if not args.wavefront:
         args.wavefront = None
     else:
         if args.wavefront not in ["RVp","SR","LVp"]:
             raise ValueError('wavefront must be either RVp or SR or LVp')
+    if not args.catheter:
+        args.catheter = "Penta"
+    else:
+        if args.catheter not in ["Penta","DecaNav"]:
+            raise ValueError('wavefront must be either "Penta" or "DecaNav"')
 
-    test_injest_and_inference(args.wavefront)
+    test_injest_and_inference(args.wavefront,args.catheter,args.meta)

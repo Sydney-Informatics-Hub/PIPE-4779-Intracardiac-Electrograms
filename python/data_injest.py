@@ -79,7 +79,6 @@ class DataIngest:
         """
         # List all files matching the pattern '_ECG_Export.txt'
         files = [f for f in os.listdir(self.deploy_data_path) if '_ECG_Export.txt' in f]
-        
         # Create a DataFrame from the files
         df = pd.DataFrame({'files': files})
         df['paths'] = df['files'].apply(lambda x: os.path.join(self.deploy_data_path, x))
@@ -92,7 +91,6 @@ class DataIngest:
         
         # Add 'Catheter_Type' to the DataFrame
         df['Catheter_Type'] = self.catheter_type
-        
         return df
 
 

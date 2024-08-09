@@ -438,8 +438,10 @@ python folder with <code>cd python</code>. Run the python file with
 <code>python inference_pipe.py</code>. This will run both the data
 injest and the model inference. Optionally if you want to run the model
 with only one wavefront type, run the python script with a wavefront
-parameter.
-i.e. <code>python inference_pipe.py --wavefront &quot;RVp&quot;</code>.The
+parameter. i.e. <code>python inference_pipe.py --wavefront &quot;RVp&quot;</code>.
+Another option is to specify the meta text that will be given to the vtk
+carto files using the meta argument. One word is expected.
+i.e. <code>python inference_pipe.py --meta sheep_18</code>.The
 prediction uses the pretrained models in the <code>/python/models</code>
 and makes predictions on the presence of scar tissue at varying depths
 on the loaded data. Predictions for each wavefront and depth are made.
