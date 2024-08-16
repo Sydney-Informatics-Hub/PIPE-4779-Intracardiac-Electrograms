@@ -369,5 +369,7 @@ if __name__ == '__main__':
     else:
         if args.catheter not in ["Penta","DecaNav"]:
             raise ValueError('wavefront must be either "Penta" or "DecaNav"')
+    if not args.meta:
+        args.meta = 'Meta_Text_Not_Specified'
 
     test_injest_and_inference(args.wavefront,args.catheter,args.meta)
