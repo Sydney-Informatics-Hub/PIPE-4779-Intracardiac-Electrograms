@@ -441,13 +441,15 @@ with only one wavefront type, run the python script with a wavefront
 parameter. i.e. <code>python inference_pipe.py --wavefront &quot;RVp&quot;</code>.
 Another option is to specify the meta text that will be given to the vtk
 carto files using the meta argument. One word is expected.
-i.e. <code>python inference_pipe.py --meta sheep_18</code>.The
-prediction uses the pretrained models in the <code>/python/models</code>
-and makes predictions on the presence of scar tissue at varying depths
-on the loaded data. Predictions for each wavefront and depth are made.
-The output of these predictions in 3D space are stored in the folder
-<code>deploy/output</code> as Vtk files. Vtk files named by wavefront
-and depth (for example:
+i.e. <code>python inference_pipe.py --meta sheep_18</code>. Options that
+vary parameters can be used in a combination.
+i.e. <code>python inference_pipe.py --catheter DecaNav --meta decainference</code>.
+The prediction uses the pretrained models in the
+<code>/python/models</code> and makes predictions on the presence of
+scar tissue at varying depths on the loaded data. Predictions for each
+wavefront and depth are made. The output of these predictions in 3D
+space are stored in the folder <code>deploy/output</code> as Vtk files.
+Vtk files named by wavefront and depth (for example:
 /deploy/output/predictions_clf_AtLeastIntra_RVp_120epochs.vtk). These
 vtk files can be opened by Carto or <a href="https://www.slicer.org/">slicer</a>.</p></li>
 </ol>

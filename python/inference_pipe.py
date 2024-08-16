@@ -252,7 +252,7 @@ def test_inference(fname_preprocessed = "../../../data/deploy/data/preprocessed_
                    meshfile= '../../../data/deploy/data/Export_Analysis/9-LV SR Penta.mesh',
                    path_out = '../../../data/deploy/test_output',
                    wavefront_selected = None,
-                   meta_text = ''):
+                   meta_text = 'Inference'):
     """
     Inference test script.
 
