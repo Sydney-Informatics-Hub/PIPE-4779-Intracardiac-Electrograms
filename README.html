@@ -441,8 +441,14 @@ with only one wavefront type, run the python script with a wavefront
 parameter. i.e. <code>python inference_pipe.py --wavefront &quot;RVp&quot;</code>.
 Another option is to specify the meta text that will be given to the vtk
 carto files using the meta argument. One word is expected.
-i.e. <code>python inference_pipe.py --meta sheep_18</code>. Options that
-vary parameters can be used in a combination.
+i.e. <code>python inference_pipe.py --meta sheep_18</code>. Another
+option is to specify the mesh file (default to is pick up the RVp mesh
+file.Example specifying the exact file
+<code>python inference_pipe.py --meshfile &quot;9-1-1-1-ReLV LVp DecaNav.mesh&quot;</code>.Example
+using patterns
+<code>python inference_pipe.py --meshfile &quot;*LVp*.mesh&quot;</code> which
+means pick up any file that has LVp in its name and ends with .mesh.
+Options that vary parameters can be used in a combination.
 i.e. <code>python inference_pipe.py --catheter DecaNav --meta decainference</code>.
 The prediction uses the pretrained models in the
 <code>/python/models</code> and makes predictions on the presence of
