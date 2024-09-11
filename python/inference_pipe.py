@@ -304,10 +304,10 @@ def find_file(pattern):
         raise FileNotFoundError(f"Mesh file not found matching the pattern: {pattern}")
     return files[0]
 
-def test_injest_and_inference(wavefront_selected = None, catheter_type = "Penta",meta_text = 'Inference: '):
+def test_injest_and_inference(wavefront_selected = None, catheter_type = "Penta",meta_text = 'Inference: ',find_mesh_file = '*RVp*' + catheter_type+ '.mesh'):
     data_dir = "../deploy/data/Export_Analysis"    
     path_model = './models'
-    find_mesh_file = '*RVp*' + catheter_type+ '.mesh'
+    #find_mesh_file = '*RVp*' + catheter_type+ '.mesh'
     pattern_meshfile = os.path.join(data_dir, find_mesh_file) #this name can vary
     try:
         meshfile = find_file(pattern_meshfile)
@@ -358,6 +358,7 @@ if __name__ == '__main__':
     parser.add_argument('--wavefront', type=str, help='Path to raw data')
     parser.add_argument('--catheter', type=str, help='Path to raw data')
     parser.add_argument('--meta', type=str, help='meta text for carto. Default is Inference')
+    parser.add_argument('--meshfile', type=str, help='optional specify mesh file pattern to find appropriate file rather than default')
     args = parser.parse_args()
     if not args.wavefront:
         args.wavefront = None
@@ -371,5 +372,8 @@ if __name__ == '__main__':
             raise ValueError('wavefront must be either "Penta" or "DecaNav"')
     if not args.meta:
         args.meta = 'Meta_Text_Not_Specified'
+    if not args.meshfile:
+        args.meshfile = '*RVp*' + catheter_type+ '.mesh'
 
-    test_injest_and_inference(args.wavefront,args.catheter,args.meta)
+
+    test_injest_and_inference(args.wavefront,args.catheter,args.meta, args.meshfile)
