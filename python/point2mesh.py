@@ -46,10 +46,17 @@ class MeshDataMapper:
 
     def read_carto(self):
         """Reads a mesh file."""
+        print("self.path_data_export",self.path_data_export)
+        print("point_data_file",self.point_data_file)
+        print("self.mesh_file",self.mesh_file)
+       
+        # ./deploy/data/Export_Analysis
         carto = Carto(self.path_data_export)
-        # list(carto)
-        # find index of mesh file basename (w/o .mesh) in list of carto
+      
+        #mesh_file = ../deploy/data/Export_Analysis/9-1-ReLV RVp Penta.mesh
         mesh_name = os.path.basename(self.mesh_file).split('.')[0]
+        print("self.mesh_file:",self.mesh_file)
+        print("mesh_name",mesh_name)
         idx = [i for i, s in enumerate(carto) if mesh_name in s][0]
         self.mesh = carto[idx].mesh
         #points_carto = carto[mesh_name].points

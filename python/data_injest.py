@@ -44,6 +44,8 @@ class DataIngest:
         Function to collect data based on Catheter_Type
         """
         template = self.get_template()
+        template = template[template['WaveFront'].notna()]
+        print("template",template)
         #template['signal_data'] = template.apply(lambda row: get_raw_signal_unipolar_data(row['WaveFront'], catheter_type, row['Point_Number']), axis=1)
         # Apply transformations row-wise
         
@@ -110,10 +112,12 @@ class DataIngest:
         list
             List of raw signal data
         """
+        print("wavefront",wavefront,"point_number",point_number)
         txt_file = self.find_signal_file(wavefront, point_number)
         
         # Read the table content, skipping the first 3 lines
         #tabular_content = pd.read_csv(txt_file, skiprows=3, delim_whitespace=True) 
+        print("what is this",txt_file)
         tabular_content = pd.read_csv(txt_file, skiprows=3, sep='\s+')
 
         with open(txt_file, 'r') as file:
@@ -160,7 +164,7 @@ class DataIngest:
         """
         
         pattern = f".*{wavefront} {self.catheter_type}_P{point_number}_ECG_Export\\.txt$"
-        
+        print("pattern",pattern)
         # List files in the directory and find the first match
         for filename in os.listdir(self.deploy_data_path):
             if re.match(pattern, filename):

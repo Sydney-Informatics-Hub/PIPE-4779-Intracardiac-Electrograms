@@ -72,6 +72,7 @@ def preprocess_data(data_dir, output_dir, catheter_type = "Penta"):
     Returns:
         - path to preprocessed data
     """
+    print("main arguments to preprocess_data",data_dir,"output_dir",output_dir,"catheter_type",catheter_type)
     data_ingest = DataIngest(data_dir, output_dir, catheter_type)
     data_ingest.collect_data()
     filename_output = data_ingest.filename_output 
@@ -176,6 +177,8 @@ def postprocess_data(path_data_export, meshfile, point_data_file, fname_out_vtk,
     Returns:
         projected labels and probabilities on mesh
     """
+    print("path_data_export",path_data_export)
+    print("I think not picked up",meshfile)
     mapper = MeshDataMapper(path_data_export, meshfile, point_data_file, fname_out_vtk, meta_text)
     mapper.run()
 
@@ -309,6 +312,7 @@ def test_injest_and_inference(wavefront_selected = None, catheter_type = "Penta"
     path_model = './models'
     #find_mesh_file = '*RVp*' + catheter_type+ '.mesh'
     pattern_meshfile = os.path.join(data_dir, find_mesh_file) #this name can vary
+    print("pattern_meshfile",pattern_meshfile)
     try:
         meshfile = find_file(pattern_meshfile)
         print(f"Using mesh file: {meshfile}")
@@ -317,6 +321,7 @@ def test_injest_and_inference(wavefront_selected = None, catheter_type = "Penta"
 
     path_out = '../deploy/output'
     print("Running Data Injest using relative folder ",data_dir)
+    # Wavefront not feed through?
     fname_preprocessed = preprocess_data(data_dir,path_out,catheter_type) #this will run data injest
     #for testing only
     #fname_preprocessed = "../deploy/output/preprocessed_rawsignal_unipolar_penta.parquet" #testing only
@@ -361,7 +366,7 @@ if __name__ == '__main__':
     parser.add_argument('--meshfile', type=str, help='optional specify mesh file pattern to find appropriate file rather than default')
     args = parser.parse_args()
     if not args.wavefront:
-        args.wavefront = None
+        args.wavefront = "RVp" # previous default not helpful
     else:
         if args.wavefront not in ["RVp","SR","LVp"]:
             raise ValueError('wavefront must be either RVp or SR or LVp')
@@ -375,5 +380,5 @@ if __name__ == '__main__':
     if not args.meshfile:
         args.meshfile = '*RVp*' + catheter_type+ '.mesh'
 
-
+    print("main arguments",args.wavefront,args.catheter,args.meta, args.meshfile)
     test_injest_and_inference(args.wavefront,args.catheter,args.meta, args.meshfile)
