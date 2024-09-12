@@ -107,7 +107,11 @@ class MeshDataMapper:
         # interpolate point data onto mesh
         self.mesh_ipl = mesh_pv.interpolate(points, strategy=null_strategy)
         # compute normals
-        self.mesh_ipl.compute_normals(point_normals=True, cell_normals=False, inplace=True)
+        #self.mesh_ipl.compute_normals(point_normals=True, cell_normals=False, inplace=True)
+        #possible fix on colours - no orient() method 
+        self.mesh_ipl.compute_normals(point_normals=True, cell_normals=True, inplace=True, flip_normals=False)
+        self.mesh_ipl = self.mesh_ipl.extract_surface().clean().triangulate()
+        
 
     def write_mesh_with_data(self):
         """Writes the mesh with the mapped point data to a file."""
