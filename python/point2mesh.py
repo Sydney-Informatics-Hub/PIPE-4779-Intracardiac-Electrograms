@@ -15,6 +15,7 @@ import os
 import pyvista as pv
 import pandas as pd
 from carto_reader.carto_data import Carto
+from cartoreader_lite.low_level.read_mesh import read_mesh_file
 import vtk
 
 class MeshDataMapper:
@@ -54,11 +55,20 @@ class MeshDataMapper:
         carto = Carto(self.path_data_export)
       
         #mesh_file = ../deploy/data/Export_Analysis/9-1-ReLV RVp Penta.mesh
+        
         mesh_name = os.path.basename(self.mesh_file).split('.')[0]
         print("self.mesh_file:",self.mesh_file)
-        print("mesh_name",mesh_name)
+        # print("mesh_name",mesh_name)
         idx = [i for i, s in enumerate(carto) if mesh_name in s][0]
-        self.mesh = carto[idx].mesh
+        # self.mesh = carto[idx].mesh
+        mesh_og = carto[idx].mesh
+        print(type(mesh_og))
+        print(type(mesh_og.pv_mesh()))
+
+        mesh_ug, header = read_mesh_file(self.mesh_file)
+        self.mesh = mesh_ug.extract_surface()
+        print(header)
+        
         #points_carto = carto[mesh_name].points
         #self.points_number = list(points_carto.keys())
         #print("Mesh loaded with", self.mesh.n_points, "points and", self.mesh.n_cells, "cells.")
@@ -91,7 +101,8 @@ class MeshDataMapper:
          # convert to pyvista mesh
         if self.mesh is None:
             raise ValueError("No mesh available to write.")
-        mesh_pv = self.mesh.pv_mesh()
+        mesh_pv = self.mesh #.pv_mesh()
+        print(type(mesh_pv))
          # Map the data from the point cloud to the mesh
         points = pv.PolyData(self.df[['X', 'Y', 'Z']].values)
         if self.target == 'predictions':
