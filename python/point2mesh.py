@@ -52,18 +52,18 @@ class MeshDataMapper:
         print("self.mesh_file",self.mesh_file)
        
         # ./deploy/data/Export_Analysis
-        carto = Carto(self.path_data_export)
+        # carto = Carto(self.path_data_export)
       
         #mesh_file = ../deploy/data/Export_Analysis/9-1-ReLV RVp Penta.mesh
         
-        mesh_name = os.path.basename(self.mesh_file).split('.')[0]
-        print("self.mesh_file:",self.mesh_file)
+        # mesh_name = os.path.basename(self.mesh_file).split('.')[0]
+        # print("self.mesh_file:",self.mesh_file)
         # print("mesh_name",mesh_name)
-        idx = [i for i, s in enumerate(carto) if mesh_name in s][0]
+        # idx = [i for i, s in enumerate(carto) if mesh_name in s][0]
         # self.mesh = carto[idx].mesh
-        mesh_og = carto[idx].mesh
-        print(type(mesh_og))
-        print(type(mesh_og.pv_mesh()))
+        # mesh_og = carto[idx].mesh
+        # print(type(mesh_og))
+        # print(type(mesh_og.pv_mesh()))
 
         mesh_ug, header = read_mesh_file(self.mesh_file)
         self.mesh = mesh_ug.extract_surface()
