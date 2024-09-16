@@ -178,7 +178,7 @@ def postprocess_data(path_data_export, meshfile, point_data_file, fname_out_vtk,
         projected labels and probabilities on mesh
     """
     print("path_data_export",path_data_export)
-    print("I think not picked up",meshfile)
+    print("I think not picked up",meshfile, point_data_file, fname_out_vtk, meta_text)
     mapper = MeshDataMapper(path_data_export, meshfile, point_data_file, fname_out_vtk, meta_text)
     mapper.run()
 
