@@ -45,6 +45,12 @@ from tsfresh.feature_extraction import settings
 from tsfresh.utilities.dataframe_functions import impute
 from tsfresh.feature_extraction import feature_calculators
 
+# List of prediction targets:
+_target_list = ['scar', 'endocardium_scar', 'intramural_scar', 'epicardial_scar']
+
+# List of wavefronts:
+_wavefront_list = ['LVp', 'RVp', 'SR']
+
 
 class FeatureExtraction:
     """
@@ -240,7 +246,7 @@ class FeatureExtraction:
         """ Run the feature extraction and selection for the given wavefront and target
 
         Args:
-            wavefront (str): 'LVp', 'RVp', or 'SR'
+            wavefront (str): e.g. 'LVp', 'RVp', or 'SR'
             target (str): 'scar' (Default) or 'endocardium_scar', 'intramural_scar', 'epicardial_scar'
         """
         self.df_to_ts(wavefront, target)
@@ -255,16 +261,16 @@ class FeatureExtraction:
         """ Run the feature extraction and selection for all wavefronts for the given target
         
         Args:
-            target (str): 'scar' (Default) or 'endocardium_scar', 'intramural_scar', 'epicardial_scar'
+            target (str): e.g. 'scar' (Default) 
         """
         self.target = target
-        for wavefront in ['LVp', 'RVp', 'SR']:
+        for wavefront in _wavefront_list:
             print(f"Processing features for wavefront {self.wavefront} and target {self.target}...")
             self.run_wavefront_target(wavefront, self.target)
 
     def run(self):
         """ Run the feature extraction and selection for all targets and wavefronts"""
-        for target in ['scar', 'endocardium_scar', 'intramural_scar', 'epicardial_scar']:
+        for target in _target_list:
             print(f"Processing features for target {target}...")
             self.run_target(target)
 
