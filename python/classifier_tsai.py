@@ -23,6 +23,15 @@ How to use for training and evaluation:
             fname_csv, 
             outpath,
             target_list = ['NoScar', 'AtLeastEndo', 'AtLeastIntra', 'epiOnly'],
+            target_type='layer',
+            method = 'CNN')
+
+    or for the multi-class classification of scar composition:
+    run_all(inpath,
+            fname_csv,
+            outpath,    
+            target_list = ['EndoIntra_SCARComposition'],
+            target_type='fat',
             method = 'CNN')
 
 or just run the script via command line:
