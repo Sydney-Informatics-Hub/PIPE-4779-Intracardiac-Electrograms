@@ -308,15 +308,25 @@ class TSai:
 
         # calculate weights for y
         if balance_classes:
-            weights = len(self.y_train) / (2 * np.bincount(self.y_train))
-            self.sample_weight = np.zeros(len(y))
-            self.sample_weight[y==0] = weights[0]
-            self.sample_weight[y==1] = weights[1]
+            if self.target_type == 'layer':
+                # binary classification
+                weights = len(self.y_train) / (2 * np.bincount(self.y_train))
+                self.sample_weight = np.zeros(len(y))
+                self.sample_weight[y==0] = weights[0]
+                self.sample_weight[y==1] = weights[1]
+            elif self.target_type == 'fat':
+                # multi-class classification
+                weights = len(self.y_train) / (len(np.unique(self.y_train)) * np.bincount(self.y_train))
+                self.sample_weight = np.zeros(len(y))
+                for i in range(len(np.unique(self.y_train))):
+                    self.sample_weight[y==i] = weights[i]
         else:
             self.sample_weight = None
 
-        self.y[self.y==0] = -1
+        if self.target_type == 'layer':
+            self.y[self.y==0] = -1
         
+        # CHECK FOR MULTICLASS IF THIS IS CORRECT TOO
         tfms  = [None, [TSClassification()]]
         batch_tfms = TSStandardize()
         # see https://timeseriesai.github.io/tsai/tslearner.html
