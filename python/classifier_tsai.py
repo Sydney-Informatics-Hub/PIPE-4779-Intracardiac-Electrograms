@@ -541,6 +541,7 @@ def run_all(inpath,
             fname_csv, 
             outpath, 
             target_list=['NoScar', 'AtLeastEndo', 'AtLeastIntra', 'epiOnly'],
+            target_type='layer',
             method='CNN',
             epochs=120,
             batch_size=None):
@@ -553,13 +554,15 @@ def run_all(inpath,
         target_list (list): List of target labels (Default: ['scar','endocardium_scar','intramural_scar','epicardial_scar'])
             example options: ['NoScar', 'AtLeastEndo', 'AtLeastIntra', 'epiOnly'] 
             or ['scar','endocardium_scar','intramural_scar','epicardial_scar']
+            or ['EndoIntra_SCARComposition']
+        target_type (str): Target type to use (default: 'layer'), options: 'layer' or 'fat'
         sheep (str): Sheep number to use (default 'S18')
         method (str): Method to use (Default: 'CNN') 
         epochs (int): Number of epochs to train (Default: 120)
         batch_size (int): Size of each batch (Default: [64, 128])
         rawsignal (bool): Whether to use raw signal data (Default: True) or window_of_interest data
     """
-    tsai = TSai(inpath, fname_csv, load_train_data=True)
+    tsai = TSai(inpath, fname_csv, load_train_data=True, target_type='layer')
     results = pd.DataFrame(columns=['target', 'wavefront', 'method', 'accuracy', 'precision', 'auc', 'mcc'])
     # date and time in string format
     os.makedirs(outpath, exist_ok=True)
@@ -582,7 +585,7 @@ def run_all(inpath,
     results.to_csv(os.path.join(outpath, 'results_stats_all.csv'), index=False)
 
 
-def test_tsai(wavefront, target, inpath, fname_csv):
+def test_tsai(wavefront, target, inpath, fname_csv, target_type='layer'):
     """
     Test the TSai classifier for a given wavefront and target.
 
@@ -592,7 +595,7 @@ def test_tsai(wavefront, target, inpath, fname_csv):
         inpath (str): Path to the input data
         fname_csv (str): Filename of the csv file containing the data
     """
-    tsai = TSai(inpath, fname_csv, load_train_data=True)
+    tsai = TSai(inpath, fname_csv, load_train_data=True, target_type=target_type)
     X, y = tsai.df_to_ts(wavefront, target)
     tsai.train_model(X, y, epochs = 180, balance_classes = True)
     path_name = '../results/tsai' + f'_{target}_{wavefront}' 
@@ -617,8 +620,11 @@ if __name__ == '__main__':
     inpath = input("Enter the path to the input data: ")
     fname_csv = input("Enter the filename of the csv/parquet file containing the pre-processed data: ")
     outpath = input("Enter the path to the output folder: ")
+    target_list = input("Enter the target labels to use (comma separated): ").split(',')
+    target_type = input("Enter the target type (layer or fat): ")
     run_all(inpath, 
             fname_csv, 
             outpath,
-            target_list = ['NoScar', 'AtLeastEndo', 'AtLeastIntra', 'epiOnly'],
+            target_list = target_list,
+            target_type = target_type,
             method = 'CNN')
