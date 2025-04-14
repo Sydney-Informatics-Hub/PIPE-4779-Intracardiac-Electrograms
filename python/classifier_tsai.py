@@ -83,6 +83,61 @@ import pandas as pd
 import time
 
 
+def preprocess_rawsignal_singlefile(inpath,
+                                    infname_parquet, 
+                                    signal='raw_unipolar',
+                                    target_columns=['endocardium_scar', 'intramural_scar', 'epicardial_scar']):
+    """
+    Ths preprocess function reads in data from a single file and preprocess data.
+    The data is then saved to a parquet file to further use in timeseries modeling such as with TSAI.
+    The output file (with ending '_clean.parquet') is saved in the same folder as the input file.
+
+    Parameters
+    ----------
+    inpath : str
+        Path to the data
+    infname_parquet : str
+        Name of the input file ()
+    signal: str, 
+        e.g. 'signal', 'rawsignal', 'signal_unipolar', 'raw_unipolar',
+    target_columns: list 
+        List of target columns to include in the output file
+        e.g. ['endocardium_scar', 'intramural_scar', 'epicardial_scar']
+        or for scar composition, e.g. 'EndoIntra_SCARComposition'
+    """
+    usecols = [ 'id',
+                'Point_Number',
+                'WaveFront',
+                'sheep',
+                signal]
+    # add target columns to usecols
+    for col in target_columns:
+        usecols.append(col)
+
+    file = os.path.join(inpath, infname_parquet)
+    # check if file exists
+    if not os.path.isfile(file):
+        raise FileNotFoundError(f'File {file} not found')
+    dfnew = pd.read_parquet(file, columns=usecols)
+    # explode rawsignal column
+    dfnew = dfnew.explode(signal)
+    dfnew[signal] = dfnew[signal].apply(lambda x: x['signal_data'] if isinstance(x, dict) and 'signal_data' in x else None)
+    # remove nan values
+    dfnew = dfnew.dropna()
+    # modify point number to avoid duplication
+    dfnew['Point_Number'] = dfnew['Point_Number'].astype(int)
+    dfnew['Point_Number'] = dfnew['sheep'].astype(str) + '_' + dfnew['Point_Number'].astype(str)
+    # rename column signal to 'signal_data'
+    dfnew = dfnew.rename(columns={signal: 'signal_data'})
+    # convert target columns to int
+    for col in target_columns:
+        dfnew[col] = dfnew[col].astype(int)
+    fname_out = infname_parquet.replace('.parquet', f'_{signal}_clean.parquet')
+    dfnew.to_parquet(os.path.join(inpath, fname_out), index=False)
+    print(f'File {fname_out} saved to {inpath}')
+    return dfnew
+
+
 
 class TSai:
     """
@@ -100,6 +155,8 @@ class TSai:
         inpath (str): Path to the input data
         fname_csv (str): Filename of the csv file containing the data
         load_train_data (bool): Whether to load the data for training (default=False)
+        target_type (str): Target label to use for training (default='layer'), options:'layer' or 'fat'
+
 
     Example:
         tsai = TSai(inpath, fname_csv)
@@ -109,23 +166,36 @@ class TSai:
         accuracy, precision, auc, mcc = tsai.eval_model()
     """
 
-    def __init__(self, inpath, fname_csv, load_train_data=False):
+    def __init__(self, inpath, fname_csv, load_train_data=False, target_type='layer'):
         self.inpath = inpath
         self.fname_csv = fname_csv
         self.df = None
+        self.target_type = target_type
+        
         if load_train_data:
             self.df = self._load_data()
 
     def _load_data(self):
-        usecols = [
-            'Point_Number',
-            'WaveFront',
-            'sheep',
-            'signal_data',
-            'endocardium_scar',
-            'intramural_scar',
-            'epicardial_scar',
-        ]
+        if self.target_type == 'layer':
+            usecols = [
+                'Point_Number',
+                'WaveFront',
+                'sheep',
+                'signal_data',
+                'endocardium_scar',
+                'intramural_scar',
+                'epicardial_scar',
+            ]
+            self.target_columns = ['scar', 'endocardium_scar', 'intramural_scar', 'epicardial_scar']
+        elif self.target_type == 'fat':
+            usecols = [
+                'Point_Number',
+                'WaveFront',
+                'sheep',
+                'signal_data',
+                'EndoIntra_SCARComposition'
+            ]
+            self.target_columns = ['EndoIntra_SCARComposition']
         # check if file exists
         if not os.path.isfile(os.path.join(self.inpath, self.fname_csv)):
             raise FileNotFoundError(f'File {self.fname_csv} not found in {self.inpath}')
@@ -143,15 +213,20 @@ class TSai:
         df = df.dropna()
         # add column "time" to df which starts at 0 and has the same length as "signal_data" for each Point_Number and WaveFront
         df['time'] = df.groupby(['Point_Number', 'WaveFront']).cumcount()
-        # Generate a column 'scar' that is 1 if either of the scar columns is 1, otherwise 0
-        df['endocardium_scar'] = df['endocardium_scar'].astype(int)
-        df['intramural_scar'] = df['intramural_scar'].astype(int)
-        df['epicardial_scar'] = df['epicardial_scar'].astype(int)
-        df['scar'] = df[['endocardium_scar', 'intramural_scar', 'epicardial_scar']].max(axis=1)
-        df['NoScar'] = 1 - df['scar']
-        df['AtLeastEndo'] = df['endocardium_scar']
-        df['AtLeastIntra'] = df['intramural_scar'] & ~df['endocardium_scar']
-        df['epiOnly'] = df['epicardial_scar'] & ~df['endocardium_scar'] & ~df['intramural_scar']
+
+        if self.target_type == 'layer':
+            # Generate a column 'scar' that is 1 if either of the scar columns is 1, otherwise 0
+            df['endocardium_scar'] = df['endocardium_scar'].astype(int)
+            df['intramural_scar'] = df['intramural_scar'].astype(int)
+            df['epicardial_scar'] = df['epicardial_scar'].astype(int)
+            df['scar'] = df[['endocardium_scar', 'intramural_scar', 'epicardial_scar']].max(axis=1)
+            df['NoScar'] = 1 - df['scar']
+            df['AtLeastEndo'] = df['endocardium_scar']
+            df['AtLeastIntra'] = df['intramural_scar'] & ~df['endocardium_scar']
+            df['epiOnly'] = df['epicardial_scar'] & ~df['endocardium_scar'] & ~df['intramural_scar']
+        elif self.target_type == 'fat':
+            # Generate a column 'scar' that is 1 if either of the scar columns is 1, otherwise 0
+            df['EndoIntra_SCARComposition'] = df['EndoIntra_SCARComposition'].astype(int)
         return df
 
 
@@ -284,12 +359,44 @@ class TSai:
         auc = roc_auc_score(self.y_test, y_probs[:,1])
         mcc = matthews_corrcoef(self.y_test, y_pred)
         conf_matrix = confusion_matrix(self.y_test, y_pred)
-        class_report = classification_report(self.y_test, y_pred, target_names=['no scar', 'scar'])
+        # calculate sensitivity and specificity
+        n_classes = conf_matrix.shape[0]
+        # Initialize arrays to store sensitivity and specificity for each class
+        sensitivity = np.zeros(n_classes)
+        specificity = np.zeros(n_classes)
+        # Calculate sensitivity and specificity for each class
+        for i in range(n_classes):
+            # True Positives: diagonal element for this class
+            tp = conf_matrix[i, i]
+            # False Negatives: sum of the row for this class, minus the TP
+            fn = np.sum(conf_matrix[i, :]) - tp
+            # False Positives: sum of the column for this class, minus the TP
+            fp = np.sum(conf_matrix[:, i]) - tp
+            # True Negatives: sum of all elements, minus TP, FP, and FN
+            tn = np.sum(conf_matrix) - tp - fp - fn
+            # Calculate sensitivity (recall) and specificity
+            sensitivity[i] = tp / (tp + fn) if (tp + fn) > 0 else 0
+            specificity[i] = tn / (tn + fp) if (tn + fp) > 0 else 0
+        # Calculate macro-average (simple average across all classes)
+        macro_sensitivity = np.mean(sensitivity)
+        macro_specificity = np.mean(specificity)
+        if self.target_type == 'layer':
+            class_report = classification_report(self.y_test, y_pred, target_names=['no scar', 'scar'])
+            class_names = ['no scar', 'scar']
+        elif self.target_type == 'fat':
+            # fat is a multi-class classification problem
+            class_report = classification_report(self.y_test, y_pred, target_names=self.target_columns)
+            # class names are the number of classes from 0 to n_classes 
+            class_names = list(np.arange(n_classes).astype(str))
+        
 
         print(f"Accuracy: {round(accuracy,4)}")
         print(f"Precision: {round(precision,4)}")
         print(f"AUC: {round(auc,4)}")
         print(f"MCC: {round(mcc,4)}")
+        print("\nMacro-average:")
+        print(f"  Sensitivity: {macro_sensitivity:.4f}")
+        print(f"  Specificity: {macro_specificity:.4f}")
         print("Confusion Matrix:")
         print(conf_matrix)
         print("Classification Report:")
@@ -303,11 +410,18 @@ class TSai:
                 f.write(f"Precision: {round(precision,4)}\n")
                 f.write(f"AUC: {round(auc,4)}\n")
                 f.write(f"MCC: {round(mcc,4)}\n")
+                f.write("\nMacro-average:")
+                f.write(f"  Sensitivity: {macro_sensitivity:.4f}\n")
+                f.write(f"  Specificity: {macro_specificity:.4f}\n")
+                for i in range(n_classes):
+                    f.write(f"Class {class_names[i]}:")
+                    f.write(f"  Sensitivity: {sensitivity[i]:.4f}")
+                    f.write(f"  Specificity: {specificity[i]:.4f}")
                 f.write("Confusion Matrix:\n")
                 f.write(str(conf_matrix))
                 f.write("\nClassification Report:\n")
                 f.write(class_report)
-        return (accuracy, precision, auc, mcc)
+        return (accuracy, precision, auc, mcc, macro_sensitivity, macro_specificity)
 
     def predict(self, X, path_model):
         """
@@ -444,14 +558,16 @@ def run_all(inpath,
             X, y = tsai.df_to_ts(wavefront, target)
             tsai.train_model(X, y, epochs=epochs, balance_classes=True, batch_size=batch_size)
             path_name = outpath + f'_{target}_{wavefront}' 
-            accuracy, precision, auc, mcc = tsai.eval_model(outpath=path_name)
+            accuracy, precision, auc, mcc, macro_sensitivity, macro_specificity = tsai.eval_model(outpath=path_name)
             new_row = [{'target': target, 
                         'wavefront': wavefront, 
                         'method': method, 
                         'accuracy': accuracy, 
                         'precision': precision, 
                         'auc': auc,
-                        'mcc': mcc}]
+                        'mcc': mcc,
+                        'macro_sensitivity': macro_sensitivity,
+                        'macro_specificity': macro_specificity}]
             results = pd.concat([results, pd.DataFrame(new_row)], ignore_index=True)
     results.to_csv(os.path.join(outpath, 'results_stats_all.csv'), index=False)
 
@@ -470,7 +586,8 @@ def test_tsai(wavefront, target, inpath, fname_csv):
     X, y = tsai.df_to_ts(wavefront, target)
     tsai.train_model(X, y, epochs = 180, balance_classes = True)
     path_name = '../results/tsai' + f'_{target}_{wavefront}' 
-    accuracy, precision, auc, mcc = tsai.eval_model(outpath=path_name)
+    accuracy, precision, auc, mcc, macro_sensitivity, macro_specificity  = tsai.eval_model(outpath=path_name)
+
 
 
 def test_all():
