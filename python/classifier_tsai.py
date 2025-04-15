@@ -59,9 +59,9 @@ How to use:
     from classifier_tsai import TSai
     tsai = TSai(inpath, fname_csv)
     df = tsai.load_data(inpath, fname_csv)
-    X, y = tsai.df_to_ts(df, wavefront, target)
+    X, y = tsai.df_to_ts(df, wavefront, target, target_type)
     tsai.train_model(X, y)
-    accuracy, precision, auc, mcc = tsai.eval_model()
+    accuracy, precision, auc, mcc, specificity, sensitivity = tsai.eval_model()
 
 Author: Sebastian Haan
 """
@@ -152,6 +152,8 @@ class TSai:
     """
     This classifier uses InceptionTime, which is an ensemble of five deep Convolutional Neural Network (CNN) models for TSC.
     The implementation leverages the python package tsai: https://timeseriesai.github.io/tsai
+    MAKE SURE THAT INPUT DATA IS PREPROCESSED and includes signal_data column with one float value in each row. 
+    If not run function preprocess_rawsignal_singlefile beforehand.
 
     This class includes functionality to:
       - load ECG data
@@ -172,10 +174,10 @@ class TSai:
         df = tsai.load_train_data(inpath, fname_csv)
         X, y = tsai.df_to_ts(df, wavefront, target)
         tsai.train_model(X, y)
-        accuracy, precision, auc, mcc = tsai.eval_model()
+        accuracy, precision, auc, mcc, specificity, sensitivity = tsai.eval_model()
     """
 
-    def __init__(self, inpath, fname_csv, load_train_data=False, target_type='layer'):
+    def __init__(self, inpath, fname_csv, load_train_data=True, target_type='layer'):
         self.inpath = inpath
         self.fname_csv = fname_csv
         self.df = None
@@ -222,6 +224,8 @@ class TSai:
         df = df.dropna()
         # add column "time" to df which starts at 0 and has the same length as "signal_data" for each Point_Number and WaveFront
         df['time'] = df.groupby(['Point_Number', 'WaveFront']).cumcount()
+
+
 
         if self.target_type == 'layer':
             # Generate a column 'scar' that is 1 if either of the scar columns is 1, otherwise 0
@@ -372,10 +376,22 @@ class TSai:
         """
         y_probs, _, y_pred = self.clf.get_X_preds(self.X_test)
         y_pred = np.array([int(t) for t in y_pred])
-        y_pred[y_pred==-1] = 0
+        if self.target_type == 'layer':
+            # binary classification
+            y_pred[y_pred==0] = -1
+            y_pred[y_pred==-1] = 0
+        elif self.target_type == 'fat':
+            # multi-class classification
+            # y_pred is already in the correct format
+            pass
         accuracy = accuracy_score(self.y_test, y_pred)
-        precision = precision_score(self.y_test, y_pred) 
-        auc = roc_auc_score(self.y_test, y_probs[:,1])
+        if self.target_type == 'layer':
+            precision = precision_score(self.y_test, y_pred, average='binary') 
+            auc = roc_auc_score(self.y_test, y_probs[:,1])
+        elif self.target_type == 'fat':
+            # fat is a multi-class classification problem
+            precision = precision_score(self.y_test, y_pred, average='macro')
+            auc = roc_auc_score(self.y_test, y_probs, multi_class='ovo', average='macro')
         mcc = matthews_corrcoef(self.y_test, y_pred)
         conf_matrix = confusion_matrix(self.y_test, y_pred)
         # calculate sensitivity and specificity
@@ -404,9 +420,10 @@ class TSai:
             class_names = ['no scar', 'scar']
         elif self.target_type == 'fat':
             # fat is a multi-class classification problem
-            class_report = classification_report(self.y_test, y_pred, target_names=self.target_columns)
             # class names are the number of classes from 0 to n_classes 
             class_names = list(np.arange(n_classes).astype(str))
+            class_report = classification_report(self.y_test, y_pred, target_names=class_names)
+
         
 
         print(f"Accuracy: {round(accuracy,4)}")
@@ -429,15 +446,17 @@ class TSai:
                 f.write(f"Precision: {round(precision,4)}\n")
                 f.write(f"AUC: {round(auc,4)}\n")
                 f.write(f"MCC: {round(mcc,4)}\n")
-                f.write("\nMacro-average:")
+                f.write("\nMacro-average:\n")
                 f.write(f"  Sensitivity: {macro_sensitivity:.4f}\n")
                 f.write(f"  Specificity: {macro_specificity:.4f}\n")
                 for i in range(n_classes):
-                    f.write(f"Class {class_names[i]}:")
-                    f.write(f"  Sensitivity: {sensitivity[i]:.4f}")
-                    f.write(f"  Specificity: {specificity[i]:.4f}")
+                    f.write(f"Class {class_names[i]}:\n")
+                    f.write(f"  Sensitivity: {sensitivity[i]:.4f}\n")
+                    f.write(f"  Specificity: {specificity[i]:.4f}\n")
+                f.write("\n")
                 f.write("Confusion Matrix:\n")
                 f.write(str(conf_matrix))
+                f.write("\n")
                 f.write("\nClassification Report:\n")
                 f.write(class_report)
         return (accuracy, precision, auc, mcc, macro_sensitivity, macro_specificity)
@@ -594,7 +613,7 @@ def run_all(inpath,
     results.to_csv(os.path.join(outpath, 'results_stats_all.csv'), index=False)
 
 
-def test_tsai(wavefront, target, inpath, fname_csv, target_type='layer'):
+def test_tsai(wavefront, target, inpath, fname_csv, target_type='layer', epochs = 100):
     """
     Test the TSai classifier for a given wavefront and target.
 
@@ -606,7 +625,7 @@ def test_tsai(wavefront, target, inpath, fname_csv, target_type='layer'):
     """
     tsai = TSai(inpath, fname_csv, load_train_data=True, target_type=target_type)
     X, y = tsai.df_to_ts(wavefront, target)
-    tsai.train_model(X, y, epochs = 180, balance_classes = True)
+    tsai.train_model(X, y, epochs = epochs, balance_classes = True)
     path_name = '../results/tsai' + f'_{target}_{wavefront}' 
     accuracy, precision, auc, mcc, macro_sensitivity, macro_specificity  = tsai.eval_model(outpath=path_name)
 
