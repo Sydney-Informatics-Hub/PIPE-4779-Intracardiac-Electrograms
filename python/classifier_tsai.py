@@ -144,7 +144,7 @@ def preprocess_rawsignal_singlefile(inpath,
     fname_out = infname_parquet.replace('.parquet', f'_{signal}_clean.parquet')
     dfnew.to_parquet(os.path.join(inpath, fname_out), index=False)
     print(f'File {fname_out} saved to {inpath}')
-    return dfnew
+    return dfnew, fname_out
 
 
 
@@ -167,6 +167,8 @@ class TSai:
         fname_csv (str): Filename of the csv file containing the data
         load_train_data (bool): Whether to load the data for training (default=False)
         target_type (str): Target label to use for training (default='layer'), options:'layer' or 'fat'
+        model_signal_name (str): Name of the signal to use for exporting the model (default='raw_unipolar')
+            This is used to create the filename of the model when exporting it. 
 
 
     Example:
@@ -177,11 +179,12 @@ class TSai:
         accuracy, precision, auc, mcc, specificity, sensitivity = tsai.eval_model()
     """
 
-    def __init__(self, inpath, fname_csv, load_train_data=True, target_type='layer'):
+    def __init__(self, inpath, fname_csv, load_train_data=True, target_type='layer', model_signal_name='raw_unipolar'):
         self.inpath = inpath
         self.fname_csv = fname_csv
         self.df = None
         self.target_type = target_type
+        self.model_signal_name = model_signal_name
         
         if load_train_data:
             self.df = self._load_data()
@@ -342,6 +345,7 @@ class TSai:
         # CHECK FOR MULTICLASS IF THIS IS CORRECT TOO
         tfms  = [None, [TSClassification()]]
         batch_tfms = TSStandardize()
+        batch_tfms = None
         # see https://timeseriesai.github.io/tsai/tslearner.html
         self.clf = TSClassifier(self.X, self.y, 
                         splits=self.splits, 
@@ -357,7 +361,7 @@ class TSai:
         self.clf.fit_one_cycle(epochs)#, 3e-4)
 
         # save the model
-        outname = f"clf_{self.target}_{self.wavefront}_{epochs}epochs.pkl"
+        outname = f"clf_{self.model_signal_name}_{self.target}_{self.wavefront}_{epochs}epochs.pkl"
         self.clf.export(outname)
         # load the model
         #clf = load_learner("models/clf.pkl")
@@ -570,6 +574,7 @@ def run_all(inpath,
             outpath, 
             target_list=['NoScar', 'AtLeastEndo', 'AtLeastIntra', 'epiOnly'],
             target_type='layer',
+            model_signal_name='raw_unipolar',
             method='CNN',
             epochs=120,
             batch_size=None):
@@ -584,13 +589,15 @@ def run_all(inpath,
             or ['scar','endocardium_scar','intramural_scar','epicardial_scar']
             or ['EndoIntra_SCARComposition']
         target_type (str): Target type to use (default: 'layer'), options: 'layer' or 'fat'
+        model_signal_name (str): Name of the signal to use (default: 'raw_unipolar') this is just to name the model export. 
+            The signal data is always read from column 'signal_data'. Change if you want have used a different signal name in preprocessing.
         sheep (str): Sheep number to use (default 'S18')
         method (str): Method to use (Default: 'CNN') 
         epochs (int): Number of epochs to train (Default: 120)
         batch_size (int): Size of each batch (Default: [64, 128])
         rawsignal (bool): Whether to use raw signal data (Default: True) or window_of_interest data
     """
-    tsai = TSai(inpath, fname_csv, load_train_data=True, target_type='layer')
+    tsai = TSai(inpath, fname_csv, load_train_data=True, target_type=target_type, model_signal_name=model_signal_name)
     results = pd.DataFrame(columns=['target', 'wavefront', 'method', 'accuracy', 'precision', 'auc', 'mcc'])
     # date and time in string format
     os.makedirs(outpath, exist_ok=True)
