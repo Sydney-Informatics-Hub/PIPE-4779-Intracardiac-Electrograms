@@ -106,10 +106,10 @@ def process_and_merge_csv_files(directory_path, master_parquet_path, outfname='m
 
 
 # Example usage:
-directory_path = '../../../results/features/fat/rawsignal'
+directory_path = '../../../results/features/fat/signal_unipolar'
 master_parquet_path ='../../../data/FAT SUB PROJECT/publishable_model_data_AdiposityElectrogram_master_merged.parquet'
 
-merged_df = process_and_merge_csv_files(directory_path, master_parquet_path, outfname='merged_data.csv', keep_column='rawsignal')
+merged_df = process_and_merge_csv_files(directory_path, master_parquet_path, outfname='merged_data.csv', keep_column='signal_unipolar')
 
 # repeat for 'signal', 'rawsignal', 'signal_unipolar', 'raw_unipolar'],
 
