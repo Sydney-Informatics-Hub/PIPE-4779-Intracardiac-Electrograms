@@ -324,7 +324,7 @@ def analyze_ecg_with_attribution(model_path, X, y=None, point_numbers=None, wave
             
             # Convert y_pred to tensor if needed
             if y_pred is not None and not isinstance(y_pred, torch.Tensor):
-                y_tensor = torch.tensor([y_pred], dtype=torch.long)
+                y_tensor = torch.tensor([int(y_pred)], dtype=torch.long)
             else:
                 y_tensor = None  # Use model's prediction
             
@@ -438,15 +438,20 @@ def analyze_ecg_with_attribution(model_path, X, y=None, point_numbers=None, wave
     return results
 
 
-def analyze_fat_composition_attribution(inpath, out_dir=None):
+def analyze_fat_composition_attribution(inpath, 
+                                        model_path='../../../results/tsai/models/clf_raw_unipolar_EndoIntra_SCARComposition_SR_150epochs.pkl', 
+                                        out_dir=None):
     """
     Analyzes attribution maps for EndoIntra_SCARComposition in SR wavefront
     from the adiposity ECG project data.
+    NOT WORKING YET
     
     Parameters:
     -----------
     inpath : str
         Path to the FAT SUB PROJECT data folder
+        inpath =  '../../../data/FAT SUB PROJECT'
+    model_path : str
     out_dir : str, optional
         Directory to save results (defaults to inpath/attribution_maps)
     
@@ -478,15 +483,13 @@ def analyze_fat_composition_attribution(inpath, out_dir=None):
     # We'll use a subset for the attribution analysis (first 10 samples)
     X_subset = X[:10]
     y_subset = y[:10]
-    
-    # Path to the trained model
-    model_path = os.path.join(inpath, 'models', f'clf_raw_unipolar_{target}_{wavefront}_120epochs.pkl')
+
     
     # Get point numbers for better labeling
     point_numbers = tsai.df[tsai.df['WaveFront'] == wavefront]['Point_Number'].unique()[:10]
     
     # Define class names based on the dataset
-    scar_composition_classes = [f'Composition-{i}' for i in range(3)]  
+    scar_composition_classes = [0, 1, 2]
     
     # Run attribution map analysis
     results = analyze_ecg_with_attribution(
