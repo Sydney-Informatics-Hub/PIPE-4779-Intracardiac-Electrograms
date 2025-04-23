@@ -436,3 +436,86 @@ def analyze_ecg_with_attribution(model_path, X, y=None, point_numbers=None, wave
             print(f"  Timepoint {idx}: Attribution value {val:.4f}")
     
     return results
+
+
+def analyze_fat_composition_attribution(inpath, out_dir=None):
+    """
+    Analyzes attribution maps for EndoIntra_SCARComposition in SR wavefront
+    from the adiposity ECG project data.
+    
+    Parameters:
+    -----------
+    inpath : str
+        Path to the FAT SUB PROJECT data folder
+    out_dir : str, optional
+        Directory to save results (defaults to inpath/attribution_maps)
+    
+    Returns:
+    --------
+    dict
+        Analysis results containing attribution maps and key timepoints
+    """
+    from classifier_tsai import TSai
+
+    # Setup output directory
+    if out_dir is None:
+        out_dir = os.path.join(inpath, 'attribution_maps')
+    os.makedirs(out_dir, exist_ok=True)
+    
+    # Initialize TSai with the adiposity data
+    target = 'EndoIntra_SCARComposition'
+    wavefront = 'SR'
+    tsai = TSai(
+        inpath=inpath, 
+        fname_csv='publishable_model_data_AdiposityElectrogram_master_merged_raw_unipolar_clean.parquet', 
+        load_train_data=True, 
+        target_type='fat'
+    )
+    
+    # Convert data for the selected wavefront and target
+    X, y = tsai.df_to_ts(wavefront, target)
+    
+    # We'll use a subset for the attribution analysis (first 10 samples)
+    X_subset = X[:10]
+    y_subset = y[:10]
+    
+    # Path to the trained model
+    model_path = os.path.join(inpath, 'models', f'clf_raw_unipolar_{target}_{wavefront}_120epochs.pkl')
+    
+    # Get point numbers for better labeling
+    point_numbers = tsai.df[tsai.df['WaveFront'] == wavefront]['Point_Number'].unique()[:10]
+    
+    # Define class names based on the dataset
+    scar_composition_classes = [f'Composition-{i}' for i in range(3)]  
+    
+    # Run attribution map analysis
+    results = analyze_ecg_with_attribution(
+        model_path=model_path,
+        X=X_subset,
+        y=y_subset,
+        point_numbers=point_numbers,
+        wavefront=wavefront,
+        target=target,
+        class_names=scar_composition_classes,
+        top_k_timepoints=20
+    )
+    
+    # Save the attribution map figure
+    results['figure'].savefig(
+        os.path.join(out_dir, f'attribution_map_{wavefront}_{target}.png'), 
+        dpi=300, 
+        bbox_inches='tight'
+    )
+    
+    # Create a summary of important timepoints
+    print(f"Analysis for {target} with {wavefront} wavefront:")
+    print("Top 5 most influential timepoints:")
+    for i, (idx, val) in enumerate(zip(
+        results['top_average_timepoints']['indices'], 
+        results['top_average_timepoints']['values']
+    )):
+        if i >= 5:
+            break
+        print(f"  Timepoint {idx}: Attribution value {val:.4f}")
+    
+    return results
