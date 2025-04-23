@@ -9,7 +9,8 @@ This software kit provides Python tools for the classification of ECG timeseries
 ### Data Exploration and Model Training
 - `features.py`: Feature extraction and selection for ECG data using the `tsfresh` library.
 - `classifier_featurebased.py`: Timeseries classification for ECG data using feature-selection and Random Forest/XGBoost.
-- `classifier_tsai.py`: Software for training and evaluation of deep Convolutional Neural Network (CNN) models for ECG timeseries classification. Includes also inference 
+- `classifier_tsai.py`: Software for training and evaluation of deep Convolutional Neural Network (CNN) models for ECG timeseries classification. Includes InceptionTime architecture for accurate time series prediction and inference capabilities.
+- `run_tsai_fat.py`: Workflow for cardiac fat composition prediction using TSAI. Merges electrogram data with histology data, preprocesses for various signal types, and trains models for fat composition classification.
 - `plot_statsresults.py`: Plot and compare statistical results for all classification methods, wavefronts, and target types (Endo, Intra, Epi).
 - `test_features.py`: Test functions for the `FeatureExtraction` class in `features.py`.
 
@@ -168,6 +169,6 @@ Acknowledgments are an important way for us to demonstrate the value we bring to
 
 If you make use of this software for your research project, please include the following acknowledgment:
 
-“This research was supported by the Sydney Informatics Hub, a Core Research Facility of the University of Sydney."
+"This research was supported by the Sydney Informatics Hub, a Core Research Facility of the University of Sydney."
 
 Author: Sebastian Haan
