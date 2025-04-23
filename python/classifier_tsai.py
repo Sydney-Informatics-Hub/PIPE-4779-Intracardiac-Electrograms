@@ -1,23 +1,33 @@
 """ Software for training and evaluation of CNN models for ECG Time Series Classification (TSC).
 
-This classifier uses InceptionTime, which is an ensemble of five deep Convolutional Neural Network (CNN) models for TSC.
-The implementation leverages the python package tsai: https://timeseriesai.github.io/tsai
+OVERVIEW:
+This classifier implements InceptionTime, an ensemble of five deep Convolutional Neural Network (CNN) models
+specifically designed for time series classification tasks. The implementation leverages the python package 
+tsai (https://timeseriesai.github.io/tsai), which provides efficient tools for time series analysis and classification.
 
-TSAI assumes that the input data is pre-processed (see preprocessing functions in combinedata.py) and contains ECG signals for different wavefronts and target labels.
+PREREQUISITES:
+- Input data must be pre-processed (see preprocessing functions in combinedata.py)
+- Data should contain ECG signals and corresponding target labels for different cardiac wavefronts
 
-The input data is expected to be in csv or parquet format and should contain the following columns:
+DATA FORMAT:
+Input data is expected in CSV or Parquet format with the following structure:
 - Point_Number: Unique identifier for each data point
-- WaveFront: 'LVp', 'RVp', or 'SR'
-- signal_data: ECG signal data as float values
-and the columns for the target labels, e.g.:
-- scar: 1 if there is a scar, 0 otherwise
-- endocardium_scar: 1 if there is an endocardial scar, 0 otherwise
-- intramural_scar: 1 if there is an intramural scar, 0 otherwise
-- epicardial_scar: 1 if there is an epicardial scar, 0 otherwise
+- WaveFront: Cardiac wavefront type ('LVp', 'RVp', or 'SR')
+- signal_data: ECG signal data as float values (one per row)
+- Target columns:
+  For scar detection (binary or multi-class):
+    - scar: 1 if there is a scar, 0 otherwise
+    - endocardium_scar: 1 if there is an endocardial scar, 0 otherwise
+    - intramural_scar: 1 if there is an intramural scar, 0 otherwise
+    - epicardial_scar: 1 if there is an epicardial scar, 0 otherwise
+  For scar composition (multi-class):
+    - EndoIntra_SCARComposition: Integer values representing different scar composition classes
 
-How to use for training and evaluation:
+USAGE EXAMPLES:
+1. For scar layer classification:
+    ```python
     inpath = 'DATA_PATH'
-    fname_csv = 'DATA_FILE.csv or DATA_FILE.parquet'
+    fname_csv = 'DATA_FILE.csv' # or 'DATA_FILE.parquet'
     outpath = 'OUTPUT_PATH'
     run_all(inpath, 
             fname_csv, 
@@ -25,45 +35,55 @@ How to use for training and evaluation:
             target_list = ['NoScar', 'AtLeastEndo', 'AtLeastIntra', 'epiOnly'],
             target_type='layer',
             method = 'CNN')
+    ```
 
-    or for the multi-class classification of scar composition:
+2. For scar composition classification:
+    ```python
     run_all(inpath,
             fname_csv,
             outpath,    
             target_list = ['EndoIntra_SCARComposition'],
             target_type='fat',
             method = 'CNN')
+    ```
 
-or just run the script via command line:
+3. Command line usage:
+    ```
     python classifier_tsai.py
+    ```
 
+CLASSIFICATION MODES:
+The classifier supports both binary and multi-class classification:
+- Binary classification: Used for detecting presence/absence of scar tissue
+- Multi-class classification: Used for classifying scar composition or location
+  (controlled via the target_type parameter: 'layer' or 'fat')
 
-The results are saved to a csv file.
+OUTPUT:
+- Trained models saved as PKL files
+- Performance metrics (accuracy, precision, AUC, MCC, sensitivity, specificity)
+- Classification reports with detailed metrics per class
+- Confusion matrices for evaluation
 
-References: 
-Fawaz, H. I., Lucas, B., Forestier, G., Pelletier, C., Schmidt, D. F., Weber, J., … & Petitjean, F. (2020). 
-Inceptiontime: Finding alexnet for time series classification. Data Mining and Knowledge Discovery, 34(6), 1936-1962.
-Official InceptionTime tensorflow implementation: https://github.com/hfawaz/InceptionTime
+INSTALLATION:
+Use conda environment with Python 3.10 as specified in environment_tsai.yml
 
-Functionality:
-    - load ECG data
-    - convert data to tsai format for univariate TSC
-    - train InceptionTime
-    - Evaluation of model
-    - Inference
-
-Installation:
-use conda environment tsai (Python 3.10), see environment_tsai.yml
-
-How to use:
+PROGRAMMATIC USAGE:
+    ```python
     from classifier_tsai import TSai
     tsai = TSai(inpath, fname_csv)
     df = tsai.load_data(inpath, fname_csv)
     X, y = tsai.df_to_ts(df, wavefront, target, target_type)
     tsai.train_model(X, y)
     accuracy, precision, auc, mcc, specificity, sensitivity = tsai.eval_model()
+    ```
+
+REFERENCES:
+Fawaz, H. I., Lucas, B., Forestier, G., Pelletier, C., Schmidt, D. F., Weber, J., … & Petitjean, F. (2020). 
+Inceptiontime: Finding alexnet for time series classification. Data Mining and Knowledge Discovery, 34(6), 1936-1962.
+Official InceptionTime tensorflow implementation: https://github.com/hfawaz/InceptionTime
 
 Author: Sebastian Haan
+Date: 2025
 """
 
 from tsai.basics import (
@@ -72,7 +92,7 @@ from tsai.basics import (
     TSClassification,
     combine_split_data,
     TSClassifier,
-    ShowGraph
+    ShowGraph,
 )
 from tsai.basics import accuracy as tsai_accuracy
 from tsai.inference import load_learner
@@ -365,6 +385,7 @@ class TSai:
         self.clf.export(outname)
         # load the model
         #clf = load_learner("models/clf.pkl")
+
 
     def eval_model(self, outpath=None):
         """

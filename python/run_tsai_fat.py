@@ -1,4 +1,59 @@
-# Workflow for fat composition prediction with tsai
+"""
+Workflow for Cardiac Fat Composition Prediction using Time Series Analysis with TSAI
+
+OVERVIEW:
+This script implements an end-to-end workflow for predicting cardiac fat composition from ECG signals
+using deep learning models based on the TSAI (Time Series AI) framework. The workflow integrates 
+histology data with electrogram recordings to predict cardiac fat composition across different
+myocardial layers (endocardial, intramural, and epicardial).
+
+WORKFLOW STAGES:
+1. Data Merging: Combines electrogram data (parquet) with histology data (CSV) to create a 
+   comprehensive dataset that links electrical signals with tissue properties
+2. Data Preprocessing: Formats the merged data for time series classification with TSAI
+3. Model Training and Evaluation: Trains InceptionTime models on different ECG signal types
+   and evaluates their performance for fat composition prediction
+
+SIGNAL TYPES PROCESSED:
+- signal: Standard processed ECG signal
+- rawsignal: Raw unprocessed ECG signal
+- signal_unipolar: Processed unipolar ECG recordings
+- raw_unipolar: Raw unipolar ECG recordings
+
+TARGET VARIABLES:
+- EndoIntra_SCARComposition: Multi-class classification of scar composition in the
+  endocardial and intramural layers
+
+KEY FEATURES:
+- Integrates histology data with electrogram recordings
+- Processes multiple signal types for comprehensive analysis
+- Uses TSAI's implementation of InceptionTime for time series classification
+- Includes both manual testing and automated full dataset processing
+
+DATA REQUIREMENTS:
+- Parquet file containing ECG signal data
+- CSV file containing histology data with tissue composition metrics
+- Both datasets must share common identifier columns for merging
+
+USAGE:
+This script is intended to be run as a complete workflow, but individual sections can
+be executed separately for more targeted analysis. Default file paths point to specific
+project data locations and may need to be modified for different environments.
+
+OUTPUT:
+- Merged datasets saved as parquet files
+- Preprocessed data formatted for TSAI analysis
+- Trained models for each signal type
+- Performance metrics (accuracy, precision, AUC, MCC, sensitivity, specificity)
+
+DEPENDENCIES:
+- pandas: For data manipulation
+- classifier_tsai: Custom module implementing TSAI-based classification
+- merge_ecg_fathistology: Custom module for merging electrogram and histology data
+
+Author: Sebastian Haan
+Date: 2025
+"""
 
 import pandas as pd
 import os
