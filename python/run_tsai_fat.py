@@ -53,6 +53,7 @@ DEPENDENCIES:
 
 Author: Sebastian Haan
 Date: 2025
+
 """
 
 import pandas as pd
