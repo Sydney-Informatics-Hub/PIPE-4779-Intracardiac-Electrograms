@@ -1,30 +1,22 @@
-"""
-TSAI Explainability via attribution map
+""" TSAI Explainability
+
+This module provides functions to visualize and analyze attribution maps for ECG time series data using a trained TSAI model.
+
+Main functions
+----------------
+- visualize_attribution_maps: Generates and visualizes attribution maps for a specified number of samples from the input data.
+- analyze_ecg_with_attribution: Performs a analysis of ECG signals using attribution maps to identify key features influencing model predictions.
 
 
 Attribution Map Interpretation
-These attribution maps visualize which parts of the ECG signals were most influential in the model's decisions. The heat-colored dots overlaid on the black signal line indicate the degree of importance:
+------------------------------
+The attribution map visualizes which parts of the signals were most influential in the model's decisions. 
+The heat-colored dots overlaid on the black signal line indicate the degree of importance:
+- Red/orange/yellow areas: These brighter colors represent regions where the model is paying the most attention
+- Dark/black areas: These represent regions the model considers less important for its prediction
 
-Red/orange/yellow areas: These brighter colors represent regions where the model is paying the most attention - the features most influential in making predictions about cardiac scar tissue
-Dark/black areas: These represent regions the model considers less important for its prediction
-
-Example Key Patterns Observed
-
-QRS Complex Focus: The model appears to be paying particularly close attention to the sharp peaks and troughs in the ECG, especially the QRS complexes (the large upward/downward deflections). This makes clinical sense since structural abnormalities like scars often affect these ventricular depolarization patterns.
-ST Segment Attention: In several samples, there's significant attention (yellow coloration) in the areas following the QRS complex, corresponding to the ST segment. Changes in this region can indicate myocardial damage.
-Pattern Consistency: There's consistency in how the model directs attention across different samples. For example:
-
-Sample 3571 shows high attribution at each major deflection
-Sample 376 focuses strongly on the initial spike and later complexes
-Sample 3046 shows a regular pattern of attribution at each cardiac cycle
-
-
-Selective Focus: The model isn't just universally highlighting all peaks - it's selectively emphasizing specific features in each ECG, suggesting it has learned meaningful patterns related to the scar target.
-
-Clinical Relevance
-This visualization suggests the model is focusing on clinically relevant features. Cardiac scars typically manifest in ECGs as changes in QRS morphology, abnormal Q waves, and ST-T wave changes - precisely the areas receiving high attribution scores.
-The attribution maps provide explainability for the model's decisions, potentially helping validate its clinical application for detecting cardiac scar tissue from ECG signals.
-
+Author: Sebastian Haan
+Date: 2025
 """
 
 from tsai.inference import load_learner
@@ -72,7 +64,6 @@ def visualize_attribution_maps(model_path, X, y=None, sample_indices=None, n_sam
         The figure containing the visualizations
     """
 
-    
     # Load the model
     try:
         model = load_learner(model_path)
@@ -182,7 +173,7 @@ def visualize_attribution_maps(model_path, X, y=None, sample_indices=None, n_sam
             ax_row[1].plot(signal, 'b-', linewidth=0.5, alpha=0.3)
             ax_row[1].set_title(f"Sample {idx} - Attribution Map")
             ax_row[1].set_xlabel("Time")
-            ax_row[1].set_ylabel("Amplitude")
+            #ax_row[1].set_ylabel("Amplitude")
             
             # Get prediction information
             if hasattr(model, 'dls') and hasattr(model.dls, 'vocab'):
@@ -202,6 +193,7 @@ def visualize_attribution_maps(model_path, X, y=None, sample_indices=None, n_sam
                           horizontalalignment='center', verticalalignment='center',
                           transform=ax_row[1].transAxes, color='red')
     
+    # ToDo: add colorbar
     plt.tight_layout()
     plt.subplots_adjust(top=0.9)
     fig.suptitle("Attribution Maps for ECG Signals", fontsize=16)
@@ -216,7 +208,7 @@ def analyze_ecg_with_attribution(model_path, X, y=None, point_numbers=None, wave
                                  target=None, module_name='backbone', apply_relu=True,
                                  top_k_timepoints=10, class_names=None, outpath=None):
     """
-    Comprehensive analysis of ECG signals using attribution maps to identify key features
+    Analysis of ECG signals using attribution maps to identify key features
     influencing model predictions.
     
     Parameters:
@@ -481,12 +473,12 @@ def analyze_fat_composition_attribution(inpath,
     X, y = tsai.df_to_ts(wavefront, target)
     
     # We'll use a subset for the attribution analysis (first 10 samples)
-    X_subset = X[:10]
-    y_subset = y[:10]
+    X_subset = X[:5]
+    y_subset = y[:5]
 
     
     # Get point numbers for better labeling
-    point_numbers = tsai.df[tsai.df['WaveFront'] == wavefront]['Point_Number'].unique()[:10]
+    point_numbers = tsai.df[tsai.df['WaveFront'] == wavefront]['Point_Number'].unique()[:5]
     
     # Define class names based on the dataset
     scar_composition_classes = [0, 1, 2]
