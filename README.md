@@ -19,6 +19,10 @@ If you make use of this software for your research project, please include the f
 
 “This research was supported by the Sydney Informatics Hub, a Core Research Facility of the University of Sydney."
 
+Please also consider citing the accompanying publication;
+De Silva K, Campbell T, Bennett RG, Anderson RD, Davey C, O’Donohue AK, Schindeler A, Turnbull S, Selvakumar D, Bhaskaran A, Kotake Y, Hsu CJ, Chong JH, Kizana E, Kumar S. Feasibility of machine learned intracardiac electrograms to predict post- infarction ventricular scar topography. Circulation: Arrhythmia and Electrophysiology (https://doi.org/10.1161/CIRCEP.124.013611)).
+
+
 ## Deployment steps
 
 1. **Clone Repo**. Clone this repository with `git clone https://github.com/Sydney-Informatics-Hub/PIPE-4779-Intracardiac-Electrograms.git` and change directory into it `cd PIPE-4779-Intracardiac-Electrograms`. If this is your first time using git, more information can be found [here](https://www.atlassian.com/git/tutorials/what-is-version-control). SSH keys need to be used for authentication and instructions can be found [here](https://docs.github.com/en/authentication/connecting-to-github-with-ssh/checking-for-existing-ssh-keys). 
