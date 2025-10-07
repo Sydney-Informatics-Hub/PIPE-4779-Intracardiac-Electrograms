@@ -1,4 +1,16 @@
-# PIPE-4779-Intracardiac-Electrograms
+# ML for Intracardiac-Electrograms
+
+> [!WARNING]
+> **This repository is not actively maintained and has been archived.**
+> 
+> Please note:
+> - Some functions may not work as expected
+> - Dependencies are outdated and may have security vulnerabilities
+> - No updates or bug fixes will be provided
+> - Issues and pull requests will not be reviewed
+> - Consider forking if you need an actively maintained version
+
+---
 
 ## Introduction
 Ventricular Tachycardia is a life-threatening condition where rapid beating of the lower chambers of the heart can lead to sudden death or fainting. It can be treated with procedures performed by cardiac electrophysiologists called catheter ablations whereby electrical catheters are navigated into the heart chambers and the electrical signals of the heart are mapped in real time. Specific patterns in these electrical signals can be interpreted to identify scar tissue in the bottom chambers of the heart (ventricular scar) which give rise to these dangerous heart rhythms. This scar can be on the inner surface of the heart (easy to identify) but may also be in the middle or outer layers of the heart muscle (which can be missed), leading to failure of catheter ablation. Our program is aimed at improving identification of ventricular scar so as to improve outcomes of patients undergoing catheter ablation.
